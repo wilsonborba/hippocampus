@@ -14,6 +14,7 @@ from lib.domain.errors import DomainError
 from lib.presentation.api.auth import get_current_identity
 from lib.presentation.api.routes import (
     consolidation,
+    docs,
     entities,
     health,
     memories,
@@ -42,7 +43,13 @@ def _build_lifespan(settings: Settings):
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title="Hippocampus", version="0.1.0", lifespan=_build_lifespan(settings))
+    app = FastAPI(
+        title="Hippocampus",
+        version="0.1.0",
+        description="Dedicated memory service: durable, associative, multi-signal recall. "
+        "Interactive reference at /docs/scalar.",
+        lifespan=_build_lifespan(settings),
+    )
     # Every `Depends(get_settings)` elsewhere in the app (e.g. the auth
     # dependency) must see the same settings this app was built with, not
     # the process-global cached singleton — otherwise a `settings=` override
@@ -72,9 +79,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             content={"error": {"code": "internal_error", "message": str(exc), "details": {}}},
         )
 
-    # health/ready stay unauthenticated on purpose: liveness/readiness probes
-    # (spec Part 7 §67-69) shouldn't depend on having a valid API key.
+    # health/ready/docs stay unauthenticated on purpose: liveness/readiness
+    # probes (spec Part 7 §67-69) and the public API reference shouldn't
+    # depend on having a valid API key.
     app.include_router(health.router)
+    app.include_router(docs.router)
 
     authenticated = [Depends(get_current_identity)]
     app.include_router(memories.router, dependencies=authenticated)

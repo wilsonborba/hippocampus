@@ -46,8 +46,10 @@ hippocampus recall "What did we decide about the mapper?"
 ```
 
 ```bash
-hippocampus-api  # serves the HTTP API (see /health, /ready)
+hippocampus-api  # serves the HTTP API (see /health, /ready, /docs/scalar)
 ```
+
+Interactive API reference: `http://<host>:8001/docs/scalar` (renders the live OpenAPI schema, no separate build step).
 
 ## Status
 
