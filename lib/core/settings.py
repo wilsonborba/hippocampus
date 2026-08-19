@@ -13,6 +13,12 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # Every field below declares a `validation_alias` (its env var
+        # name); without this, pydantic only accepts those aliases as
+        # constructor kwargs and silently drops plain-field-name kwargs
+        # (extra="ignore") — which broke tests/factories constructing
+        # `Settings(database_url=..., api_keys=...)` directly.
+        populate_by_name=True,
     )
 
     # Core environment & database
@@ -142,6 +148,19 @@ class Settings(BaseSettings):
     )
     recall_superseded_penalty: float = Field(
         default=0.5, validation_alias=AliasChoices("HIPPOCAMPUS_RECALL_SUPERSEDED_PENALTY")
+    )
+
+    # API authentication (spec Part 7 §4, §10-11). Empty dict = auth disabled
+    # (local/dev mode) — "the smallest mechanism consistent with current
+    # infrastructure", not OAuth. Maps a service name to its static bearer
+    # key, same shape as FSM's FSM_APP_KEYS for ecosystem consistency.
+    api_keys: dict[str, str] = Field(
+        default_factory=dict, validation_alias=AliasChoices("HIPPOCAMPUS_API_KEYS")
+    )
+    # Service names (keys of `api_keys`) allowed to call elevated/destructive
+    # operations such as hard delete (spec Part 7 §10, §23).
+    admin_services: list[str] = Field(
+        default_factory=list, validation_alias=AliasChoices("HIPPOCAMPUS_ADMIN_SERVICES")
     )
 
 

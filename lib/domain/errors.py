@@ -52,3 +52,21 @@ class InvalidRelationshipError(DomainError):
 class InvalidMemoryStatusError(DomainError):
     code = "invalid_memory_status"
     status_code = 422
+
+
+class UnauthorizedError(DomainError):
+    """Missing/invalid credentials (spec Part 7 §4-6). Reused by the API auth
+    dependency; it's not a memory-domain concern, but it shares the same
+    machine-readable error envelope, so it lives alongside the other errors
+    that already map through `app.py`'s exception handler."""
+
+    code = "unauthorized"
+    status_code = 401
+
+
+class ForbiddenError(DomainError):
+    """Authenticated but not authorized for this operation (spec Part 7 §7,
+    §10 — e.g. hard delete requires an elevated service identity)."""
+
+    code = "forbidden"
+    status_code = 403

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.domain.models import MemoryInput
 from lib.domain.services.memory_service import MemoryService
+from lib.presentation.api.auth import require_admin
 from lib.presentation.api.deps import get_memory_repo, get_memory_service
 from lib.presentation.api.schemas.common import DataResponse
 from lib.presentation.api.schemas.memory import (
@@ -195,11 +196,10 @@ def restore_memory(memory_id: str, service: MemoryService = Depends(get_memory_s
     return DataResponse(data=MemoryOut.model_validate(memory))
 
 
-@router.delete("/{memory_id}")
+@router.delete("/{memory_id}", dependencies=[Depends(require_admin)])
 def hard_delete_memory(memory_id: str, service: MemoryService = Depends(get_memory_service)) -> DataResponse[dict]:
     """Explicit destructive operation (spec Part 5 §58) — never triggered by
-    `forget`. Real deployments should gate this behind stronger authorization
-    once auth is wired in (spec Part 7 §10, deferred)."""
+    `forget`. Requires an admin-scoped service identity (spec Part 7 §10)."""
     service.hard_delete(memory_id)
     return DataResponse(data={"memory_id": memory_id, "status": "deleted"})
 
