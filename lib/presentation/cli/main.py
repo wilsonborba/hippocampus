@@ -183,6 +183,48 @@ def db_upgrade(ctx: typer.Context) -> None:
     console.print("Database upgraded to head.")
 
 
+# -- scheduler ----------------------------------------------------------------------
+
+scheduler_app = typer.Typer(help="Background job scheduler (embedding, document sync, expiration, reconciliation).")
+app.add_typer(scheduler_app, name="scheduler")
+
+
+@scheduler_app.command("run")
+def scheduler_run(ctx: typer.Context) -> None:
+    """Blocking foreground process (spec Part 6 §11, §124 — "API process +
+    one or more worker processes", no separate broker required). Intended to
+    be supervised by systemd, matching this ecosystem's existing deploy
+    pattern (see FSM's `fsm-application.service`)."""
+    import asyncio
+    import signal
+
+    from lib.domain.tasks.scheduler import build_default_jobs, run_scheduler
+
+    settings = get_settings()
+    if not settings.scheduler_enabled:
+        console.print("[dim]Scheduler disabled (HIPPOCAMPUS_SCHEDULER_ENABLED=false).[/dim]")
+        return
+
+    jobs = build_default_jobs(settings)
+    console.print(f"Starting scheduler with {len(jobs)} job(s): {', '.join(j.name for j in jobs)}")
+
+    async def _main() -> None:
+        stop_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                loop.add_signal_handler(sig, stop_event.set)
+            except NotImplementedError:
+                pass  # not available on this platform; Ctrl+C still raises KeyboardInterrupt
+        await run_scheduler(jobs, stop_event)
+
+    try:
+        asyncio.run(_main())
+    except KeyboardInterrupt:
+        pass
+    console.print("Scheduler stopped.")
+
+
 # -- admin --------------------------------------------------------------------------
 
 admin_app = typer.Typer(help="Background maintenance jobs (run manually until a scheduler exists).")
