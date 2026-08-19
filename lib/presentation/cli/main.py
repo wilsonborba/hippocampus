@@ -107,6 +107,52 @@ def recall(
     )
 
 
+# -- consolidate ---------------------------------------------------------------------
+
+
+@app.command()
+def consolidate(
+    ctx: typer.Context,
+    tag: Optional[str] = typer.Option(None, "--tag"),
+    type_: Optional[str] = typer.Option(None, "--type"),
+    limit: int = typer.Option(50, "--limit"),
+    apply: bool = typer.Option(False, "--apply", help="Archive confirmed exact duplicates (default: --dry-run, report only)"),
+) -> None:
+    from lib.domain.errors import ValidationError
+    from lib.domain.models import SearchFilters
+    from lib.presentation.api.deps import get_consolidation_service
+    from lib.presentation.cli.output import error_exit
+
+    if not tag and not type_:
+        error_exit("consolidation requires at least --tag or --type (never the whole corpus, spec Part 5 §64)")
+        return
+
+    filters = SearchFilters(tags_any=[tag] if tag else [], memory_types=[type_] if type_ else [], limit=limit)
+    service = get_consolidation_service()
+    try:
+        report = service.apply_safe(filters=filters) if apply else service.analyze(filters=filters)
+    except ValidationError as exc:
+        error_exit(str(exc))
+        return
+
+    def _render() -> None:
+        console.print(f"candidate duplicates: {len(report.candidate_duplicates)}")
+        console.print(f"candidate contradictions (not auto-resolved): {len(report.candidate_contradictions)}")
+        console.print(f"applied changes: {len(report.applied_changes)}")
+        for change in report.applied_changes:
+            console.print(f"  {change.action}: {change.memory_id} ({change.detail})")
+
+    emit(
+        ctx,
+        json_data={
+            "candidate_duplicates": [d.__dict__ for d in report.candidate_duplicates],
+            "candidate_contradictions": [c.__dict__ for c in report.candidate_contradictions],
+            "applied_changes": [a.__dict__ for a in report.applied_changes],
+        },
+        table=_render,
+    )
+
+
 # -- health -------------------------------------------------------------------------
 
 
