@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -11,6 +11,7 @@ from lib.core.logs import LogTarget, configure_logging, get_logger
 from lib.core.settings import Settings, get_settings
 from lib.dal.migrations import upgrade_db
 from lib.domain.errors import DomainError
+from lib.presentation.api.auth import get_current_identity
 from lib.presentation.api.routes import (
     entities,
     health,
@@ -41,6 +42,11 @@ def _build_lifespan(settings: Settings):
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or get_settings()
     app = FastAPI(title="Hippocampus", version="0.1.0", lifespan=_build_lifespan(settings))
+    # Every `Depends(get_settings)` elsewhere in the app (e.g. the auth
+    # dependency) must see the same settings this app was built with, not
+    # the process-global cached singleton — otherwise a `settings=` override
+    # passed here silently has no effect on request-time dependencies.
+    app.dependency_overrides[get_settings] = lambda: settings
 
     app.add_middleware(
         CORSMiddleware,
@@ -65,13 +71,17 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             content={"error": {"code": "internal_error", "message": str(exc), "details": {}}},
         )
 
+    # health/ready stay unauthenticated on purpose: liveness/readiness probes
+    # (spec Part 7 §67-69) shouldn't depend on having a valid API key.
     app.include_router(health.router)
-    app.include_router(memories.router)
-    app.include_router(search.router)
-    app.include_router(recall.router)
-    app.include_router(tags.router)
-    app.include_router(entities.router)
-    app.include_router(resources.router)
-    app.include_router(working.router)
+
+    authenticated = [Depends(get_current_identity)]
+    app.include_router(memories.router, dependencies=authenticated)
+    app.include_router(search.router, dependencies=authenticated)
+    app.include_router(recall.router, dependencies=authenticated)
+    app.include_router(tags.router, dependencies=authenticated)
+    app.include_router(entities.router, dependencies=authenticated)
+    app.include_router(resources.router, dependencies=authenticated)
+    app.include_router(working.router, dependencies=authenticated)
 
     return app
