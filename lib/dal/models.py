@@ -19,8 +19,41 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from lib.dal.local.database import Base, TimestampMixin
+
+try:
+    from pgvector.sqlalchemy import Vector as _PgVector
+except ImportError:  # pragma: no cover - the `postgres` extra may be absent
+    _PgVector = None
+
+
+class PortableVector(TypeDecorator):
+    """Native pgvector column on PostgreSQL, portable JSON float array
+    elsewhere (SQLite dev/test, or when the `postgres` extra isn't
+    installed). Deliberately dimension-less: no embedding model has been
+    chosen yet (spec Part 7 §147), and pgvector's unconstrained `vector`
+    type accepts whatever length each model produces. This means it cannot
+    be ANN-indexed (ivfflat/hnsw require a fixed `vector(n)`) — once a model
+    is chosen, a follow-up migration should pin the dimension and add that
+    index. Until then, `list_embeddings()` brute-force cosine similarity
+    (spec Part 3 §42) remains the retrieval path regardless of which storage
+    this resolves to."""
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql" and _PgVector is not None:
+            return dialect.type_descriptor(_PgVector())
+        return dialect.type_descriptor(JSON())
+
+    def process_bind_param(self, value, dialect):
+        return None if value is None else list(value)
+
+    def process_result_value(self, value, dialect):
+        return None if value is None else list(value)
 
 
 def new_id() -> str:
@@ -386,14 +419,10 @@ class MemoryEvent(Base):
 
 
 class MemoryEmbedding(Base):
-    """Derived, rebuildable semantic vector (spec Part 3 §36-43). Stored as a
-    portable JSON float array rather than a native pgvector column: no
-    embedding model/dimension has been chosen yet (deferred per spec Part 7
-    §147), and a native `vector` column can't be validated against a real
-    pgvector instance from this environment. Once a model is chosen, add a
-    migration that introduces a native pgvector column/index and backfills
-    from this table — memory identity is unaffected either way (spec Part 3
-    Invariant 6)."""
+    """Derived, rebuildable semantic vector (spec Part 3 §36-43). Uses a
+    native pgvector column on PostgreSQL (see `PortableVector` above) and a
+    portable JSON float array elsewhere (SQLite dev/test). Memory identity is
+    unaffected regardless of storage (spec Part 3 Invariant 6)."""
 
     __tablename__ = "memory_embedding"
 
@@ -402,7 +431,7 @@ class MemoryEmbedding(Base):
     model: Mapped[str] = mapped_column(String(128), nullable=False)
     model_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
-    embedding: Mapped[List[float]] = mapped_column(JSON, nullable=False)
+    embedding: Mapped[List[float]] = mapped_column(PortableVector, nullable=False)
     source_text_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
