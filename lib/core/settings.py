@@ -169,6 +169,27 @@ class Settings(BaseSettings):
         default=50, validation_alias=AliasChoices("HIPPOCAMPUS_CONSOLIDATION_MAX_CANDIDATES")
     )
 
+    # Background job scheduler (spec Part 6 §103-105 — triggers jobs, holds
+    # no business logic itself). No exact frequency is mandated by the spec;
+    # these are reasonable local-hardware-friendly defaults.
+    scheduler_enabled: bool = Field(
+        default=True, validation_alias=AliasChoices("HIPPOCAMPUS_SCHEDULER_ENABLED")
+    )
+    scheduler_expiration_interval_seconds: float = Field(
+        default=300.0, validation_alias=AliasChoices("HIPPOCAMPUS_SCHEDULER_EXPIRATION_INTERVAL_SECONDS")
+    )
+    scheduler_document_sync_interval_seconds: float = Field(
+        default=120.0,
+        validation_alias=AliasChoices("HIPPOCAMPUS_SCHEDULER_DOCUMENT_SYNC_INTERVAL_SECONDS"),
+    )
+    scheduler_embedding_interval_seconds: float = Field(
+        default=60.0, validation_alias=AliasChoices("HIPPOCAMPUS_SCHEDULER_EMBEDDING_INTERVAL_SECONDS")
+    )
+    scheduler_reconciliation_interval_seconds: float = Field(
+        default=1800.0,
+        validation_alias=AliasChoices("HIPPOCAMPUS_SCHEDULER_RECONCILIATION_INTERVAL_SECONDS"),
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
