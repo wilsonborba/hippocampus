@@ -163,6 +163,12 @@ class Settings(BaseSettings):
         default_factory=list, validation_alias=AliasChoices("HIPPOCAMPUS_ADMIN_SERVICES")
     )
 
+    # Consolidation (spec Part 5 §64 — candidate sets must always be bounded,
+    # never "consolidate everything").
+    consolidation_max_candidates: int = Field(
+        default=50, validation_alias=AliasChoices("HIPPOCAMPUS_CONSOLIDATION_MAX_CANDIDATES")
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

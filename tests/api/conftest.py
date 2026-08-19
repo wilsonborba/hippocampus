@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from lib.domain.services.consolidation_service import ConsolidationService
 from lib.presentation.api import deps
 from lib.presentation.api.app import create_app
 
@@ -21,5 +22,6 @@ def client(memory_repo, tag_repo, entity_repo, resource_repo, document_store, me
     app.dependency_overrides[deps.get_document_store] = lambda: document_store
     app.dependency_overrides[deps.get_memory_service] = lambda: memory_service
     app.dependency_overrides[deps.get_recall_service] = lambda: recall_service
+    app.dependency_overrides[deps.get_consolidation_service] = lambda: ConsolidationService(memory_repo=memory_repo)
     with TestClient(app) as test_client:
         yield test_client

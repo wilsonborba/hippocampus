@@ -13,6 +13,7 @@ from lib.dal.migrations import upgrade_db
 from lib.domain.errors import DomainError
 from lib.presentation.api.auth import get_current_identity
 from lib.presentation.api.routes import (
+    consolidation,
     entities,
     health,
     memories,
@@ -83,5 +84,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.include_router(entities.router, dependencies=authenticated)
     app.include_router(resources.router, dependencies=authenticated)
     app.include_router(working.router, dependencies=authenticated)
+    app.include_router(consolidation.router, dependencies=authenticated)
 
     return app
