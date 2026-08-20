@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 API_SERVICE_NAME="hippocampus-api"
 SCHEDULER_SERVICE_NAME="hippocampus-scheduler"
 API_SERVICE_FILE="/etc/systemd/system/${API_SERVICE_NAME}.service"
