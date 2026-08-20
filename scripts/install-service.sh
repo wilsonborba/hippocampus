@@ -151,7 +151,10 @@ main() {
 
   log "Installing Python dependencies."
   "$VENV_DIR/bin/pip" install --upgrade pip >/dev/null
-  "$VENV_DIR/bin/pip" install -e "$ROOT_DIR" >/dev/null
+  # `postgres`/`redis` extras: a real deployment's .env points at real
+  # Postgres/Redis (psycopg/redis are lazy-imported everywhere except the
+  # SQLAlchemy engine, which needs psycopg present at import time).
+  "$VENV_DIR/bin/pip" install -e "$ROOT_DIR[postgres,redis]" >/dev/null
 
   mkdir -p "$ROOT_DIR/var"
 
