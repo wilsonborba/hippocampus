@@ -70,3 +70,11 @@ class ForbiddenError(DomainError):
 
     code = "forbidden"
     status_code = 403
+
+
+class UnsupportedRenderFormatError(DomainError):
+    """`GET /memories/{id}/graph?format=...` requested a format the graph
+    renderer doesn't know (see `lib.domain.rendering`)."""
+
+    code = "unsupported_render_format"
+    status_code = 400

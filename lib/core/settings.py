@@ -124,6 +124,15 @@ class Settings(BaseSettings):
         default=2,
         validation_alias=AliasChoices("HIPPOCAMPUS_GRAPH_MAX_DEPTH", "GRAPH_MAX_DEPTH"),
     )
+    # Above this many nodes, `MemoryGraphService` collapses everything outside
+    # the roots' immediate neighborhood into synthetic cluster nodes rather
+    # than rendering the full detail (hybrid small/large graph behavior).
+    graph_cluster_threshold: int = Field(
+        default=40,
+        validation_alias=AliasChoices(
+            "HIPPOCAMPUS_GRAPH_CLUSTER_THRESHOLD", "GRAPH_CLUSTER_THRESHOLD"
+        ),
+    )
 
     # Recall ranking weights (spec Part 4 §30-33 — a deliberately simple,
     # inspectable weighted sum; no exact values are mandated by the spec, so

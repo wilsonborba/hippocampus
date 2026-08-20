@@ -5,9 +5,10 @@ from typing import List, Optional
 
 import typer
 
-from lib.domain.errors import DomainError
+from lib.domain.errors import DomainError, UnsupportedRenderFormatError
 from lib.domain.models import MemoryInput
-from lib.presentation.api.deps import get_memory_service
+from lib.domain.rendering import compute_layout, render_d2, render_mermaid, render_png, render_svg
+from lib.presentation.api.deps import get_memory_graph_service, get_memory_service
 from lib.presentation.cli.output import emit, error_exit, print_table
 
 app = typer.Typer(help="Create, inspect, and manage memories.", no_args_is_help=True)
@@ -195,6 +196,63 @@ def delete(
         error_exit(str(exc))
         return
     emit(ctx, json_data={"memory_id": memory_id, "status": "deleted"})
+
+
+@app.command()
+def graph(
+    ctx: typer.Context,
+    memory_id: str,
+    depth: Optional[int] = typer.Option(None, "--depth"),
+    relation: Optional[str] = typer.Option(None, "--relation", help="comma-separated relation_type filter"),
+    include_entities: bool = typer.Option(True, "--include-entities/--no-entities"),
+    include_tags: bool = typer.Option(True, "--include-tags/--no-tags"),
+    include_resources: bool = typer.Option(True, "--include-resources/--no-resources"),
+    max_nodes: int = typer.Option(300, "--max-nodes"),
+    format_: str = typer.Option("json", "--format", help="json|d2|mermaid|svg|png"),
+    output: Optional[Path] = typer.Option(None, "--output", help="required for svg/png"),
+) -> None:
+    """`hippocampus memory graph <id> --format svg --output out.svg`."""
+    try:
+        get_memory_service().get(memory_id)
+        graph_data = get_memory_graph_service().build_graph(
+            [memory_id], depth=depth,
+            relation_types=relation.split(",") if relation else None,
+            include_entities=include_entities, include_tags=include_tags,
+            include_resources=include_resources, max_nodes=max_nodes,
+        )
+    except DomainError as exc:
+        error_exit(str(exc))
+        return
+
+    if format_ in ("svg", "png") and output is None:
+        error_exit(f"--format {format_} requires --output <path>")
+        return
+
+    if format_ == "json":
+        payload = {
+            "nodes": [vars(n) for n in graph_data.nodes],
+            "edges": [vars(e) for e in graph_data.edges],
+            "root_ids": graph_data.root_ids,
+            "truncated": graph_data.truncated,
+        }
+        emit(ctx, json_data=payload)
+        return
+    if format_ == "d2":
+        typer.echo(render_d2(graph_data))
+        return
+    if format_ == "mermaid":
+        typer.echo(render_mermaid(graph_data))
+        return
+    if format_ == "svg":
+        output.write_text(render_svg(compute_layout(graph_data), graph_data))
+        typer.echo(f"wrote {output}")
+        return
+    if format_ == "png":
+        output.write_bytes(render_png(render_svg(compute_layout(graph_data), graph_data)))
+        typer.echo(f"wrote {output}")
+        return
+
+    error_exit(str(UnsupportedRenderFormatError(f"unsupported format: {format_!r}")))
 
 
 @app.command()

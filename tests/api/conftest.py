@@ -9,7 +9,10 @@ from lib.presentation.api.app import create_app
 
 
 @pytest.fixture()
-def client(memory_repo, tag_repo, entity_repo, resource_repo, document_store, memory_service, recall_service):
+def client(
+    memory_repo, tag_repo, entity_repo, resource_repo, document_store, memory_service, recall_service,
+    memory_graph_service,
+):
     """Wires the FastAPI app to the same isolated in-memory-SQLite repositories
     the domain-layer tests use (see tests/conftest.py), instead of whatever
     HIPPOCAMPUS_DATABASE_URL happens to be configured — API tests must not
@@ -23,5 +26,6 @@ def client(memory_repo, tag_repo, entity_repo, resource_repo, document_store, me
     app.dependency_overrides[deps.get_memory_service] = lambda: memory_service
     app.dependency_overrides[deps.get_recall_service] = lambda: recall_service
     app.dependency_overrides[deps.get_consolidation_service] = lambda: ConsolidationService(memory_repo=memory_repo)
+    app.dependency_overrides[deps.get_memory_graph_service] = lambda: memory_graph_service
     with TestClient(app) as test_client:
         yield test_client

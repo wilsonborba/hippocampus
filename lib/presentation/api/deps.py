@@ -11,6 +11,7 @@ from lib.dal.repositories.resource_repository import ResourceRepository
 from lib.dal.repositories.tag_repository import TagRepository
 from lib.domain.services.consolidation_service import ConsolidationService
 from lib.domain.services.embedding import EmbeddingProvider, build_embedding_provider
+from lib.domain.services.memory_graph_service import MemoryGraphService
 from lib.domain.services.memory_service import MemoryService
 from lib.domain.services.recall_service import RecallService
 
@@ -80,3 +81,11 @@ def get_recall_service() -> RecallService:
 @lru_cache(maxsize=1)
 def get_consolidation_service() -> ConsolidationService:
     return ConsolidationService(memory_repo=get_memory_repo())
+
+
+@lru_cache(maxsize=1)
+def get_memory_graph_service() -> MemoryGraphService:
+    return MemoryGraphService(
+        memory_repo=get_memory_repo(), tag_repo=get_tag_repo(),
+        entity_repo=get_entity_repo(), resource_repo=get_resource_repo(),
+    )

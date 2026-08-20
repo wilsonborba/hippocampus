@@ -12,6 +12,7 @@ from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.dal.repositories.resource_repository import ResourceRepository
 from lib.dal.repositories.tag_repository import TagRepository
 from lib.domain.services.embedding import NullEmbeddingProvider
+from lib.domain.services.memory_graph_service import MemoryGraphService
 from lib.domain.services.memory_service import MemoryService
 from lib.domain.services.recall_service import RecallService
 
@@ -69,3 +70,10 @@ def memory_service(memory_repo, tag_repo, entity_repo, resource_repo, document_s
 @pytest.fixture()
 def recall_service(memory_repo, tag_repo):
     return RecallService(memory_repo=memory_repo, tag_repo=tag_repo, embedding_provider=NullEmbeddingProvider())
+
+
+@pytest.fixture()
+def memory_graph_service(memory_repo, tag_repo, entity_repo, resource_repo):
+    return MemoryGraphService(
+        memory_repo=memory_repo, tag_repo=tag_repo, entity_repo=entity_repo, resource_repo=resource_repo,
+    )

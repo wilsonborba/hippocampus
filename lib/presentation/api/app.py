@@ -18,6 +18,7 @@ from lib.presentation.api.routes import (
     entities,
     health,
     memories,
+    memory_graph,
     recall,
     resources,
     search,
@@ -87,6 +88,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     authenticated = [Depends(get_current_identity)]
     app.include_router(memories.router, dependencies=authenticated)
+    app.include_router(memory_graph.router, dependencies=authenticated)
     app.include_router(search.router, dependencies=authenticated)
     app.include_router(recall.router, dependencies=authenticated)
     app.include_router(tags.router, dependencies=authenticated)
