@@ -36,7 +36,53 @@ cp .env.example .env
 hippocampus db upgrade
 ```
 
-## Usage
+## Usage & HTTP API Reference
+
+### Running the API Server
+
+```bash
+hippocampus-api  # Serves the HTTP API on port 8001 (see /health, /ready, /docs)
+```
+
+Interactive OpenAPI documentation is available at `http://localhost:8001/docs`.
+
+### Multitenant Isolation Tag Convention
+
+Hippocampus uses tag-based multitenancy:
+- Add `tenant:<tenant_id>` in the `tags` array to isolate memories per tenant/app.
+- When recalling memories, pass `tags: ["tenant:<tenant_id>"]` to query within that tenant's namespace.
+
+### REST API Endpoints & `curl` Examples
+
+#### 1. Store Memory (`POST /api/v1/memories`)
+```bash
+curl -X POST http://localhost:8001/api/v1/memories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "cortex_db_choice",
+    "content": "Cortex uses SQLite local for logs and PostgreSQL for multi-tenant production.",
+    "tags": ["architecture", "tenant:cortex-app-1"],
+    "metadata": {"key": "cortex_db_choice", "tenant_id": "cortex-app-1"}
+  }'
+```
+
+#### 2. Recall / Vector Search Memories (`POST /api/v1/recall`)
+```bash
+curl -X POST http://localhost:8001/api/v1/recall \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Qual banco de dados o Cortex utiliza?",
+    "tags": ["tenant:cortex-app-1"],
+    "limit": 5
+  }'
+```
+
+#### 3. Delete Memory Node (`DELETE /api/v1/memories/{id}`)
+```bash
+curl -X DELETE http://localhost:8001/api/v1/memories/<memory-id>
+```
+
+### CLI Usage
 
 ```bash
 hippocampus memory remember --type decision --content "CouchDB is the selected document store." --tag project:hippocampus
@@ -45,13 +91,6 @@ hippocampus search "mapper"
 hippocampus recall "What did we decide about the mapper?"
 ```
 
-```bash
-hippocampus-api  # serves the HTTP API (see /health, /ready, /docs/scalar)
-```
-
-Interactive API reference: `http://<host>:8001/docs/scalar` (renders the live OpenAPI schema, no separate build step).
-
 ## Status
 
-Early implementation — MVP scope tracked in issue #1. Full architecture/domain
-specification lives locally in `docs/` (untracked, per working rules).
+MVP scope tracked in issue #1. Full architecture/domain specification lives locally in `docs/` (untracked, per working rules).
