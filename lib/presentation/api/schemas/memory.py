@@ -10,6 +10,7 @@ class MemoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    workspace_id: str
     memory_type: str
     status: str
     title: Optional[str] = None
@@ -30,6 +31,7 @@ class MemoryOut(BaseModel):
 
 class MemoryCreateRequest(BaseModel):
     content: Optional[str] = None
+    workspace_id: str = "default"
     memory_type: Optional[str] = None
     title: Optional[str] = None
     summary: Optional[str] = None

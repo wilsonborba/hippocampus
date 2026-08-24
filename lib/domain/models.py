@@ -14,6 +14,7 @@ class MemoryInput:
     (spec Part 4 §6 - "explicit metadata has precedence")."""
 
     content: Optional[str] = None
+    workspace_id: str = "default"
     memory_type: Optional[str] = None
     title: Optional[str] = None
     summary: Optional[str] = None
@@ -38,6 +39,7 @@ class SearchFilters:
     """Deterministic structured-search criteria (spec Part 4 §14-16)."""
 
     text: Optional[str] = None
+    workspace_id: Optional[str] = None
     memory_types: list[str] = field(default_factory=list)
     statuses: list[str] = field(default_factory=list)
     tags_any: list[str] = field(default_factory=list)
@@ -60,6 +62,7 @@ class RecallRequest:
     weighted model, matching the "eligibility filtering" step in Part 4 §26)."""
 
     query: str
+    workspace_id: Optional[str] = None
     context: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
     entity_ids: list[str] = field(default_factory=list)

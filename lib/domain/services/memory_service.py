@@ -52,6 +52,7 @@ _MAX_ASSOC_FIELD_LENGTHS = {
     "resource.relationship": 32,
     "resource.source": 32,
 }
+_MAX_WORKSPACE_ID_LENGTH = 64
 
 
 def _now() -> datetime:
@@ -71,6 +72,14 @@ def _validate_max_length(field: str, value: Optional[str], max_length: int) -> N
         raise ValidationError(
             f"{field} must be {max_length} characters or fewer; got {len(value)}"
         )
+
+
+def normalize_workspace_id(workspace_id: Optional[str]) -> str:
+    normalized = normalize_tag_part(workspace_id or "default")
+    if not normalized:
+        raise ValidationError("workspace_id cannot be blank")
+    _validate_max_length("workspace_id", normalized, _MAX_WORKSPACE_ID_LENGTH)
+    return normalized
 
 
 class MemoryService:
@@ -104,8 +113,10 @@ class MemoryService:
         if not data.content and not data.summary and not data.title:
             raise ValidationError("at least one of content, summary, or title is required")
         self._validate_associations(data)
+        workspace_id = normalize_workspace_id(data.workspace_id)
 
         memory = Memory(
+            workspace_id=workspace_id,
             memory_type=memory_type,
             status=MemoryStatus.ACTIVE.value,
             title=data.title,
@@ -200,6 +211,7 @@ class MemoryService:
         tags_any = [canonicalize_tag_filter(tag) for tag in filters.tags_any]
         tags_all = [canonicalize_tag_filter(tag) for tag in filters.tags_all]
         return self._memories.list(
+            workspace_id=normalize_workspace_id(filters.workspace_id) if filters.workspace_id else None,
             memory_type=filters.memory_types[0] if filters.memory_types else None,
             statuses=filters.statuses or None,
             tags_any=tags_any or None,

@@ -50,6 +50,55 @@ def test_create_with_tags_is_searchable_by_bare_tag(client):
     assert [memory["id"] for memory in response.json()["data"]] == [memory_id]
 
 
+def test_workspace_isolation_for_search(client):
+    work_id = client.post(
+        "/api/v1/memories",
+        json={"workspace_id": "work", "content": "Data Lake access state.", "tags": ["KAN-805"]},
+    ).json()["data"]["id"]
+    personal_id = client.post(
+        "/api/v1/memories",
+        json={"workspace_id": "personal", "content": "Data Lake access state.", "tags": ["KAN-805"]},
+    ).json()["data"]["id"]
+
+    response = client.post(
+        "/api/v1/search",
+        json={"workspace_id": "work", "tags": ["KAN-805"], "limit": 10},
+    )
+
+    assert response.status_code == 200
+    ids = [memory["id"] for memory in response.json()["data"]]
+    assert ids == [work_id]
+    assert personal_id not in ids
+
+
+def test_search_supports_tags_all_inside_workspace(client):
+    matching_id = client.post(
+        "/api/v1/memories",
+        json={"workspace_id": "work", "content": "Data Lake access.", "tags": ["KAN-805", "data-lake"]},
+    ).json()["data"]["id"]
+    client.post(
+        "/api/v1/memories",
+        json={"workspace_id": "work", "content": "Data Lake partial.", "tags": ["KAN-805"]},
+    )
+
+    response = client.post(
+        "/api/v1/search",
+        json={"workspace_id": "work", "tags_all": ["KAN-805", "data-lake"], "limit": 10},
+    )
+
+    assert response.status_code == 200
+    assert [memory["id"] for memory in response.json()["data"]] == [matching_id]
+
+
+def test_create_returns_workspace_id(client):
+    response = client.post(
+        "/api/v1/memories",
+        json={"workspace_id": "Work Space", "content": "x"},
+    )
+    assert response.status_code == 201
+    assert response.json()["data"]["workspace_id"] == "work-space"
+
+
 def test_create_rejects_overlong_provenance_fields_before_db_error(client):
     response = client.post(
         "/api/v1/memories",

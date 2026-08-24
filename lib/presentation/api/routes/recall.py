@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/v1/recall", tags=["recall"])
 @router.post("")
 def recall(body: RecallRequestIn, service: RecallService = Depends(get_recall_service)) -> DataResponse[list[RecallResultItem]]:
     request = RecallRequest(
-        query=body.query, context=body.context, tags=body.tags, entity_ids=body.entity_ids,
+        query=body.query, workspace_id=body.workspace_id, context=body.context, tags=body.tags, entity_ids=body.entity_ids,
         resource_ids=body.resource_ids, memory_types=body.memory_types, historical=body.historical,
         limit=body.limit,
     )

@@ -11,7 +11,7 @@ from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.dal.repositories.tag_repository import TagRepository, normalize_tag_part
 from lib.domain.models import RecallRequest, RecallResult
 from lib.domain.services.embedding import EmbeddingProvider, cosine_similarity
-from lib.domain.services.memory_service import canonicalize_tag_filter
+from lib.domain.services.memory_service import canonicalize_tag_filter, normalize_workspace_id
 
 _HALF_LIFE_DAYS = 30.0  # recency decays to ~0.5 after this many days; a soft
 # signal only (spec Part 4 §47 — recency must not overpower explicit facts).
@@ -48,8 +48,10 @@ class RecallService:
         # union), then trim after scoring.
         candidate_pool = max(limit * 4, 20)
         tag_filters = [canonicalize_tag_filter(tag) for tag in request.tags]
+        workspace_id = normalize_workspace_id(request.workspace_id) if request.workspace_id else None
 
         candidates = self._memories.list(
+            workspace_id=workspace_id,
             memory_type=request.memory_types[0] if request.memory_types else None,
             statuses=statuses,
             tags_any=tag_filters or None,
@@ -63,6 +65,7 @@ class RecallService:
             # criteria alone; fall back to those without the lexical filter
             # rather than returning nothing (still deterministic, still bounded).
             candidates = self._memories.list(
+                workspace_id=workspace_id,
                 memory_type=request.memory_types[0] if request.memory_types else None,
                 statuses=statuses,
                 tags_any=tag_filters or None,

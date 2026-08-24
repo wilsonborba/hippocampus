@@ -67,6 +67,7 @@ class MemoryRepository:
 
     def list(
         self,
+        workspace_id: Optional[str] = None,
         memory_type: Optional[str] = None,
         statuses: Optional[Sequence[str]] = None,
         tags_any: Optional[Sequence[str]] = None,
@@ -87,6 +88,8 @@ class MemoryRepository:
 
         def _op(s: Session) -> List[Memory]:
             stmt = select(Memory)
+            if workspace_id:
+                stmt = stmt.where(Memory.workspace_id == workspace_id)
             if memory_type:
                 stmt = stmt.where(Memory.memory_type == memory_type)
             if statuses:

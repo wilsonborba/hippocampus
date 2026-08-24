@@ -25,6 +25,7 @@ def remember(
     content_file: Optional[Path] = typer.Option(None, "--content-file", help="Read content from a file"),
     stdin: bool = typer.Option(False, "--stdin", help="Read content from stdin"),
     type_: Optional[str] = typer.Option(None, "--type", help="working|episodic|semantic|decision|..."),
+    workspace: str = typer.Option("default", "--workspace", help="Workspace/tenant id"),
     title: Optional[str] = typer.Option(None, "--title"),
     summary: Optional[str] = typer.Option(None, "--summary"),
     importance: Optional[float] = typer.Option(None, "--importance"),
@@ -41,7 +42,7 @@ def remember(
     try:
         memory = get_memory_service().remember(
             MemoryInput(
-                content=content, memory_type=type_, title=title, summary=summary,
+                content=content, workspace_id=workspace, memory_type=type_, title=title, summary=summary,
                 importance=importance, confidence=confidence, tags=list(tag),
             )
         )
@@ -52,7 +53,14 @@ def remember(
     def _render() -> None:
         print_table("Memory created", ["ID", "TYPE", "STATUS", "SUMMARY"], [_memory_row(memory)])
 
-    emit(ctx, json_data={"id": memory.id, "memory_type": memory.memory_type, "status": memory.status}, table=_render)
+    emit(
+        ctx,
+        json_data={
+            "id": memory.id, "workspace_id": memory.workspace_id,
+            "memory_type": memory.memory_type, "status": memory.status,
+        },
+        table=_render,
+    )
 
 
 @app.command()
@@ -70,7 +78,7 @@ def get(ctx: typer.Context, memory_id: str) -> None:
         ctx,
         json_data={
             "id": memory.id, "memory_type": memory.memory_type, "status": memory.status,
-            "title": memory.title, "summary": memory.summary, "content": memory.content,
+            "workspace_id": memory.workspace_id, "title": memory.title, "summary": memory.summary, "content": memory.content,
             "importance": memory.importance, "confidence": memory.confidence,
         },
         table=_render,
@@ -81,21 +89,32 @@ def get(ctx: typer.Context, memory_id: str) -> None:
 def list_(
     ctx: typer.Context,
     type_: Optional[str] = typer.Option(None, "--type"),
+    workspace: Optional[str] = typer.Option(None, "--workspace"),
     status: Optional[str] = typer.Option(None, "--status"),
     tag: Optional[str] = typer.Option(None, "--tag"),
     limit: int = typer.Option(20, "--limit"),
 ) -> None:
-    from lib.presentation.api.deps import get_memory_repo
+    from lib.domain.models import SearchFilters
+    from lib.presentation.api.deps import get_memory_service
 
-    memories = get_memory_repo().list(
-        memory_type=type_, statuses=[status] if status else None, tags_any=[tag] if tag else None,
-        limit=limit,
+    memories = get_memory_service().search(
+        SearchFilters(
+            workspace_id=workspace, memory_types=[type_] if type_ else [],
+            statuses=[status] if status else [], tags_any=[tag] if tag else [], limit=limit,
+        )
     )
 
     def _render() -> None:
         print_table("Memories", ["ID", "TYPE", "STATUS", "SUMMARY"], [_memory_row(m) for m in memories])
 
-    emit(ctx, json_data=[{"id": m.id, "memory_type": m.memory_type, "status": m.status} for m in memories], table=_render)
+    emit(
+        ctx,
+        json_data=[
+            {"id": m.id, "workspace_id": m.workspace_id, "memory_type": m.memory_type, "status": m.status}
+            for m in memories
+        ],
+        table=_render,
+    )
 
 
 @app.command()

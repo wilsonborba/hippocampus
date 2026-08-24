@@ -10,6 +10,7 @@ from lib.dal.models import Memory, MemoryEventType, MemoryStatus
 from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.domain.errors import ValidationError
 from lib.domain.models import SearchFilters
+from lib.domain.services.memory_service import canonicalize_tag_filter, normalize_workspace_id
 
 # Memory types worth checking for contradiction: durable claims that can
 # meaningfully conflict (spec Part 4 §88-91). Working/episodic/observation
@@ -89,10 +90,11 @@ class ConsolidationService:
         if not filters.statuses:
             filters.statuses = [MemoryStatus.ACTIVE.value]
         return self._memories.list(
+            workspace_id=normalize_workspace_id(filters.workspace_id) if filters.workspace_id else None,
             memory_type=filters.memory_types[0] if filters.memory_types else None,
             statuses=filters.statuses,
-            tags_any=filters.tags_any or None,
-            tags_all=filters.tags_all or None,
+            tags_any=[canonicalize_tag_filter(tag) for tag in filters.tags_any] or None,
+            tags_all=[canonicalize_tag_filter(tag) for tag in filters.tags_all] or None,
             created_after=filters.created_after,
             created_before=filters.created_before,
             limit=filters.limit,

@@ -56,12 +56,14 @@ def main(
 def search(
     ctx: typer.Context,
     query: str = typer.Argument(...),
+    workspace: Optional[str] = typer.Option(None, "--workspace"),
     type_: Optional[str] = typer.Option(None, "--type"),
     tag: Optional[str] = typer.Option(None, "--tag"),
     limit: int = typer.Option(20, "--limit"),
 ) -> None:
     filters = SearchFilters(
-        text=query, memory_types=[type_] if type_ else [], tags_any=[tag] if tag else [], limit=limit,
+        text=query, workspace_id=workspace, memory_types=[type_] if type_ else [],
+        tags_any=[tag] if tag else [], limit=limit,
     )
     memories = get_memory_service().search(filters)
 
@@ -71,18 +73,28 @@ def search(
             [[m.id, m.memory_type, m.status, (m.title or m.summary or "")[:60]] for m in memories],
         )
 
-    emit(ctx, json_data=[{"id": m.id, "memory_type": m.memory_type, "status": m.status} for m in memories], table=_render)
+    emit(
+        ctx,
+        json_data=[
+            {"id": m.id, "workspace_id": m.workspace_id, "memory_type": m.memory_type, "status": m.status}
+            for m in memories
+        ],
+        table=_render,
+    )
 
 
 @app.command()
 def recall(
     ctx: typer.Context,
     query: str = typer.Argument(...),
+    workspace: Optional[str] = typer.Option(None, "--workspace"),
     tag: Optional[str] = typer.Option(None, "--tag"),
     historical: bool = typer.Option(False, "--historical"),
     limit: int = typer.Option(10, "--limit"),
 ) -> None:
-    request = RecallRequest(query=query, tags=[tag] if tag else [], historical=historical, limit=limit)
+    request = RecallRequest(
+        query=query, workspace_id=workspace, tags=[tag] if tag else [], historical=historical, limit=limit
+    )
     results = get_recall_service().recall(request)
 
     def _render() -> None:
@@ -114,6 +126,7 @@ def recall(
 def consolidate(
     ctx: typer.Context,
     tag: Optional[str] = typer.Option(None, "--tag"),
+    workspace: Optional[str] = typer.Option(None, "--workspace"),
     type_: Optional[str] = typer.Option(None, "--type"),
     limit: int = typer.Option(50, "--limit"),
     apply: bool = typer.Option(False, "--apply", help="Archive confirmed exact duplicates (default: --dry-run, report only)"),
@@ -127,7 +140,9 @@ def consolidate(
         error_exit("consolidation requires at least --tag or --type (never the whole corpus, spec Part 5 §64)")
         return
 
-    filters = SearchFilters(tags_any=[tag] if tag else [], memory_types=[type_] if type_ else [], limit=limit)
+    filters = SearchFilters(
+        workspace_id=workspace, tags_any=[tag] if tag else [], memory_types=[type_] if type_ else [], limit=limit
+    )
     service = get_consolidation_service()
     try:
         report = service.apply_safe(filters=filters) if apply else service.analyze(filters=filters)

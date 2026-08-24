@@ -4,11 +4,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from lib.dal.repositories.memory_repository import MemoryRepository
-from lib.domain.models import MemoryInput
+from lib.domain.models import MemoryInput, SearchFilters
 from lib.domain.services.memory_service import MemoryService
 from lib.presentation.api.auth import require_admin
-from lib.presentation.api.deps import get_memory_repo, get_memory_service
+from lib.presentation.api.deps import get_memory_service
 from lib.presentation.api.schemas.common import DataResponse
 from lib.presentation.api.schemas.memory import (
     CorrectRequest,
@@ -40,6 +39,7 @@ def create_memory(
     memory = service.remember(
         MemoryInput(
             content=body.content, memory_type=body.memory_type, title=body.title,
+            workspace_id=body.workspace_id,
             summary=body.summary, importance=body.importance, confidence=body.confidence,
             tags=body.tags, entities=body.entities, resources=body.resources,
             context=body.context, provenance=body.provenance, observed_at=body.observed_at,
@@ -58,16 +58,23 @@ def get_memory(memory_id: str, service: MemoryService = Depends(get_memory_servi
 
 @router.get("")
 def list_memories(
+    workspace_id: Optional[str] = None,
     memory_type: Optional[str] = None,
     status: Optional[str] = None,
     tag: Optional[str] = Query(None),
     text: Optional[str] = None,
     limit: int = 20,
-    repo: MemoryRepository = Depends(get_memory_repo),
+    service: MemoryService = Depends(get_memory_service),
 ) -> DataResponse[list[MemoryOut]]:
-    memories = repo.list(
-        memory_type=memory_type, statuses=[status] if status else None,
-        tags_any=[tag] if tag else None, text=text, limit=limit,
+    memories = service.search(
+        SearchFilters(
+            workspace_id=workspace_id,
+            memory_types=[memory_type] if memory_type else [],
+            statuses=[status] if status else [],
+            tags_any=[tag] if tag else [],
+            text=text,
+            limit=limit,
+        )
     )
     return DataResponse(data=[MemoryOut.model_validate(m) for m in memories])
 

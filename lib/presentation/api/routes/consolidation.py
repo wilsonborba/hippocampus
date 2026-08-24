@@ -21,6 +21,7 @@ def consolidate(
     filters = None
     if body.filters:
         filters = SearchFilters(
+            workspace_id=body.filters.workspace_id,
             memory_types=body.filters.memory_types, tags_any=body.filters.tags,
             created_after=body.filters.created_after, created_before=body.filters.created_before,
             limit=body.filters.limit,

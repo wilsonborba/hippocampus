@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class ConsolidationFilters(BaseModel):
+    workspace_id: Optional[str] = None
     memory_types: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     created_after: Optional[datetime] = None

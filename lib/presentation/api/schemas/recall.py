@@ -9,6 +9,7 @@ from lib.presentation.api.schemas.memory import MemoryOut
 
 class RecallRequestIn(BaseModel):
     query: str
+    workspace_id: Optional[str] = None
     context: dict[str, Any] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
     entity_ids: list[str] = Field(default_factory=list)

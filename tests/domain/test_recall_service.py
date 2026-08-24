@@ -50,5 +50,20 @@ def test_bare_tag_recall_matches_general_namespace(memory_service, recall_servic
     assert [r.memory.id for r in results] == [memory.id]
 
 
+def test_recall_filters_by_workspace(memory_service, recall_service):
+    work_memory = memory_service.remember(
+        MemoryInput(workspace_id="work", content="Data Lake access state.", tags=["KAN-805"])
+    )
+    memory_service.remember(
+        MemoryInput(workspace_id="personal", content="Data Lake access state.", tags=["KAN-805"])
+    )
+
+    results = recall_service.recall(
+        RecallRequest(workspace_id="work", query="access", tags=["KAN-805"])
+    )
+
+    assert [r.memory.id for r in results] == [work_memory.id]
+
+
 def test_recall_returns_nothing_for_empty_corpus(recall_service):
     assert recall_service.recall(RecallRequest(query="anything")) == []

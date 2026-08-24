@@ -10,9 +10,11 @@ from lib.presentation.api.schemas.memory import MemoryOut
 
 class SearchRequest(BaseModel):
     text: Optional[str] = None
+    workspace_id: Optional[str] = None
     memory_types: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    tags_all: list[str] = Field(default_factory=list)
     entity_id: Optional[str] = None
     resource_id: Optional[str] = None
     created_after: Optional[datetime] = None

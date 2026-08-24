@@ -178,6 +178,7 @@ class Memory(Base, TimestampMixin):
     __tablename__ = "memory"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    workspace_id: Mapped[str] = mapped_column(String(64), default="default", nullable=False, index=True)
     memory_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     status: Mapped[str] = mapped_column(
         String(32), default=MemoryStatus.ACTIVE.value, nullable=False, index=True
@@ -217,6 +218,7 @@ class Memory(Base, TimestampMixin):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
+        Index("idx_memory_workspace_status_type", "workspace_id", "status", "memory_type"),
         Index("idx_memory_status_type", "status", "memory_type"),
         Index("idx_memory_valid_range", "valid_from", "valid_until"),
     )
