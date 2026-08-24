@@ -19,7 +19,7 @@ from lib.dal.remote.document_store import MemoryDocumentStore
 from lib.dal.repositories.entity_repository import EntityRepository
 from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.dal.repositories.resource_repository import ResourceRepository
-from lib.dal.repositories.tag_repository import TagRepository
+from lib.dal.repositories.tag_repository import TagRepository, normalize_tag_part
 from lib.domain.errors import (
     InvalidMemoryStatusError,
     InvalidRelationshipError,
@@ -39,10 +39,38 @@ _VALID_RELATION_TYPES = {
     "references", "belongs_to", "discusses", "implements", "depends_on", "caused_by",
     "resulted_in", "part_of", "associated_with",
 }
+_MAX_PROVENANCE_FIELD_LENGTHS = {
+    "source_type": 32,
+    "source_system": 64,
+    "source_resource_id": 256,
+    "source_memory_id": 64,
+    "capture_method": 64,
+}
+_MAX_ASSOC_FIELD_LENGTHS = {
+    "entity.role": 32,
+    "entity.source": 32,
+    "resource.relationship": 32,
+    "resource.source": 32,
+}
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def canonicalize_tag_filter(tag: str) -> str:
+    if ":" in tag:
+        namespace, value = tag.split(":", 1)
+    else:
+        namespace, value = "general", tag
+    return f"{normalize_tag_part(namespace)}:{normalize_tag_part(value)}"
+
+
+def _validate_max_length(field: str, value: Optional[str], max_length: int) -> None:
+    if value is not None and len(value) > max_length:
+        raise ValidationError(
+            f"{field} must be {max_length} characters or fewer; got {len(value)}"
+        )
 
 
 class MemoryService:
@@ -75,6 +103,7 @@ class MemoryService:
             raise ValidationError(f"unknown memory_type: {memory_type!r}")
         if not data.content and not data.summary and not data.title:
             raise ValidationError("at least one of content, summary, or title is required")
+        self._validate_associations(data)
 
         memory = Memory(
             memory_type=memory_type,
@@ -142,6 +171,21 @@ class MemoryService:
         )
         return self.get(memory.id)
 
+    def _validate_associations(self, data: MemoryInput) -> None:
+        provenance = data.provenance or {}
+        for field, max_length in _MAX_PROVENANCE_FIELD_LENGTHS.items():
+            _validate_max_length(f"provenance.{field}", provenance.get(field), max_length)
+        for entity_ref in data.entities:
+            _validate_max_length("entities[].role", entity_ref.get("role"), _MAX_ASSOC_FIELD_LENGTHS["entity.role"])
+            _validate_max_length("entities[].source", entity_ref.get("source"), _MAX_ASSOC_FIELD_LENGTHS["entity.source"])
+        for resource_ref in data.resources:
+            _validate_max_length(
+                "resources[].relationship",
+                resource_ref.get("relationship", "references"),
+                _MAX_ASSOC_FIELD_LENGTHS["resource.relationship"],
+            )
+            _validate_max_length("resources[].source", resource_ref.get("source"), _MAX_ASSOC_FIELD_LENGTHS["resource.source"])
+
     # -- read -----------------------------------------------------------------------
 
     def get(self, memory_id: str, touch: bool = False) -> Memory:
@@ -153,11 +197,13 @@ class MemoryService:
         return memory
 
     def list(self, filters: SearchFilters) -> list[Memory]:
+        tags_any = [canonicalize_tag_filter(tag) for tag in filters.tags_any]
+        tags_all = [canonicalize_tag_filter(tag) for tag in filters.tags_all]
         return self._memories.list(
             memory_type=filters.memory_types[0] if filters.memory_types else None,
             statuses=filters.statuses or None,
-            tags_any=filters.tags_any or None,
-            tags_all=filters.tags_all or None,
+            tags_any=tags_any or None,
+            tags_all=tags_all or None,
             entity_id=filters.entity_id,
             resource_id=filters.resource_id,
             text=filters.text,
@@ -207,6 +253,7 @@ class MemoryService:
     def tag(self, memory_id: str, tags: list[str], source: str = "user",
             confidence: Optional[float] = None) -> list[Tag]:
         self.get(memory_id)
+        _validate_max_length("source", source, _MAX_ASSOC_FIELD_LENGTHS["entity.source"])
         added = []
         for canonical in tags:
             tag_row = self._tags.parse_and_get_or_create(canonical)
@@ -230,6 +277,8 @@ class MemoryService:
         source: Optional[str] = None, confidence: Optional[float] = None,
     ) -> Entity:
         self.get(memory_id)
+        _validate_max_length("role", role, _MAX_ASSOC_FIELD_LENGTHS["entity.role"])
+        _validate_max_length("source", source, _MAX_ASSOC_FIELD_LENGTHS["entity.source"])
         entity = self._entities.get_or_create(entity_type, canonical_name)
         self._memories.add_entity(memory_id, entity.id, role=role, source=source, confidence=confidence)
         return entity
@@ -240,6 +289,7 @@ class MemoryService:
         relationship: str = "references",
     ) -> Resource:
         self.get(memory_id)
+        _validate_max_length("relationship", relationship, _MAX_ASSOC_FIELD_LENGTHS["resource.relationship"])
         resource = self._resources.register(
             resource_type=resource_type, source_system=source_system,
             external_id=external_id, uri=uri,

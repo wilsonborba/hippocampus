@@ -37,6 +37,51 @@ def test_tag_and_untag_lifecycle(client):
     assert response.status_code == 204
 
 
+def test_create_with_tags_is_searchable_by_bare_tag(client):
+    response = client.post(
+        "/api/v1/memories",
+        json={"content": "KAN-805 is blocked on DB access.", "tags": ["KAN-805"]},
+    )
+    assert response.status_code == 201
+    memory_id = response.json()["data"]["id"]
+
+    response = client.post("/api/v1/search", json={"tags": ["KAN-805"], "limit": 10})
+    assert response.status_code == 200
+    assert [memory["id"] for memory in response.json()["data"]] == [memory_id]
+
+
+def test_create_rejects_overlong_provenance_fields_before_db_error(client):
+    response = client.post(
+        "/api/v1/memories",
+        json={
+            "content": "x",
+            "provenance": {"source_type": "conversation_and_local_verification"},
+        },
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "invalid_request"
+    assert "provenance.source_type" in body["error"]["message"]
+
+
+def test_create_rejects_overlong_entity_role_before_db_error(client):
+    response = client.post(
+        "/api/v1/memories",
+        json={
+            "content": "x",
+            "entities": [
+                {
+                    "entity_type": "person",
+                    "canonical_name": "Dr. Cherry",
+                    "role": "decision source referenced by Wilson",
+                }
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "entities[].role" in response.json()["error"]["message"]
+
+
 def test_supersede_via_api(client):
     old_id = client.post("/api/v1/memories", json={"content": "MongoDB selected."}).json()["data"]["id"]
     new_id = client.post("/api/v1/memories", json={"content": "CouchDB selected."}).json()["data"]["id"]

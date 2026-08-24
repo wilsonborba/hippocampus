@@ -48,7 +48,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         title="Hippocampus",
         version="0.1.0",
         description="Dedicated memory service: durable, associative, multi-signal recall. "
-        "Interactive reference at /docs/scalar.",
+        "Interactive reference at /docs.",
+        docs_url=None,
+        redoc_url=None,
         lifespan=_build_lifespan(settings),
     )
     # Every `Depends(get_settings)` elsewhere in the app (e.g. the auth

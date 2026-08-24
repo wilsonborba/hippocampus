@@ -20,6 +20,7 @@ _SCALAR_HTML = """<!doctype html>
 """
 
 
+@router.get("/docs", response_class=HTMLResponse, include_in_schema=False)
 @router.get("/docs/scalar", response_class=HTMLResponse, include_in_schema=False)
 def scalar_docs() -> HTMLResponse:
     """Interactive API reference generated from FastAPI's own OpenAPI

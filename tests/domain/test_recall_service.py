@@ -42,5 +42,13 @@ def test_tag_scoped_recall_prefers_matching_project(memory_service, recall_servi
     ) < ids_in_order.index(other_project_memory.id)
 
 
+def test_bare_tag_recall_matches_general_namespace(memory_service, recall_service):
+    memory = memory_service.remember(MemoryInput(content="Data Lake access state.", tags=["KAN-805"]))
+
+    results = recall_service.recall(RecallRequest(query="access", tags=["KAN-805"]))
+
+    assert [r.memory.id for r in results] == [memory.id]
+
+
 def test_recall_returns_nothing_for_empty_corpus(recall_service):
     assert recall_service.recall(RecallRequest(query="anything")) == []

@@ -11,6 +11,7 @@ from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.dal.repositories.tag_repository import TagRepository, normalize_tag_part
 from lib.domain.models import RecallRequest, RecallResult
 from lib.domain.services.embedding import EmbeddingProvider, cosine_similarity
+from lib.domain.services.memory_service import canonicalize_tag_filter
 
 _HALF_LIFE_DAYS = 30.0  # recency decays to ~0.5 after this many days; a soft
 # signal only (spec Part 4 §47 — recency must not overpower explicit facts).
@@ -46,11 +47,12 @@ class RecallService:
         # ranking has something to actually rank (spec Part 4 §23-24 candidate
         # union), then trim after scoring.
         candidate_pool = max(limit * 4, 20)
+        tag_filters = [canonicalize_tag_filter(tag) for tag in request.tags]
 
         candidates = self._memories.list(
             memory_type=request.memory_types[0] if request.memory_types else None,
             statuses=statuses,
-            tags_any=request.tags or None,
+            tags_any=tag_filters or None,
             entity_id=request.entity_ids[0] if request.entity_ids else None,
             resource_id=request.resource_ids[0] if request.resource_ids else None,
             text=request.query or None,
@@ -63,7 +65,7 @@ class RecallService:
             candidates = self._memories.list(
                 memory_type=request.memory_types[0] if request.memory_types else None,
                 statuses=statuses,
-                tags_any=request.tags or None,
+                tags_any=tag_filters or None,
                 entity_id=request.entity_ids[0] if request.entity_ids else None,
                 resource_id=request.resource_ids[0] if request.resource_ids else None,
                 limit=candidate_pool,
