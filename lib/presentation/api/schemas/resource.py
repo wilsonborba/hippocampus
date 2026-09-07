@@ -15,7 +15,11 @@ class ResourceOut(BaseModel):
     external_id: Optional[str] = None
     uri: Optional[str] = None
     title: Optional[str] = None
+    ownership: str = "external"
     status: str
+    content_type: Optional[str] = None
+    checksum: Optional[str] = None
+    size_bytes: Optional[int] = None
     created_at: datetime
 
 

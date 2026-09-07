@@ -57,14 +57,22 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("HIPPOCAMPUS_COUCHDB_PASSWORD", "COUCHDB_PASSWORD"),
     )
 
-    # File Store: existing local large/raw artifact service (reference only —
-    # Hippocampus never duplicates bytes into its own databases).
+    # File Store: existing local large/raw artifact service (FSM).
+    # Used for resource existence/stat checks and direct file uploads.
     filestore_url: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("HIPPOCAMPUS_FILESTORE_URL", "FILESTORE_URL"),
     )
+    filestore_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("HIPPOCAMPUS_FILESTORE_API_KEY", "FILESTORE_API_KEY"),
+    )
+    filestore_app: str = Field(
+        default="hippocampus",
+        validation_alias=AliasChoices("HIPPOCAMPUS_FILESTORE_APP", "FILESTORE_APP"),
+    )
     filestore_timeout_seconds: float = Field(
-        default=10.0,
+        default=30.0,
         validation_alias=AliasChoices(
             "HIPPOCAMPUS_FILESTORE_TIMEOUT_SECONDS", "FILESTORE_TIMEOUT_SECONDS"
         ),

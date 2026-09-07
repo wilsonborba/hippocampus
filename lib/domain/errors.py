@@ -78,3 +78,13 @@ class UnsupportedRenderFormatError(DomainError):
 
     code = "unsupported_render_format"
     status_code = 400
+
+
+class FileStoreError(DomainError):
+    code = "filestore_error"
+    status_code = 502
+
+
+class FileStoreNotConfiguredError(DomainError):
+    code = "filestore_not_configured"
+    status_code = 503

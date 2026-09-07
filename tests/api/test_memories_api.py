@@ -166,3 +166,72 @@ def test_health_and_ready(client):
     ready = client.get("/ready")
     assert ready.status_code == 200
     assert ready.json()["status"] == "ready"
+
+
+def test_upload_memory_resource_success(client, memory_service):
+    import httpx
+    from lib.dal.remote.filestore_client import FileStoreClient
+    from lib.presentation.api import deps
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        return httpx.Response(
+            status_code=200,
+            json={
+                "item": {
+                    "key": "mem-upload-abc",
+                    "checksum_sha256": "checksum12345",
+                    "size_bytes": 11,
+                    "content_type": "text/plain",
+                }
+            },
+        )
+
+    mock_filestore = FileStoreClient(
+        base_url="http://filestore.local",
+        api_key="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    memory_service._filestore = mock_filestore
+    client.app.dependency_overrides[deps.get_filestore_client] = lambda: mock_filestore
+    client.app.dependency_overrides[deps.get_memory_service] = lambda: memory_service
+
+    memory_id = client.post("/api/v1/memories", json={"content": "test memory"}).json()["data"]["id"]
+
+    response = client.post(
+        f"/api/v1/memories/{memory_id}/resources/upload",
+        files={"file": ("doc.txt", b"hello world", "text/plain")},
+        data={"relationship": "references", "title": "My Doc"},
+    )
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["resource_type"] == "file"
+    assert data["source_system"] == "fsm"
+    assert data["external_id"] == "mem-upload-abc"
+    assert data["uri"] == "http://filestore.local/hippocampus/media/mem-upload-abc"
+    assert data["ownership"] == "hippocampus"
+    assert data["status"] == "available"
+    assert data["content_type"] == "text/plain"
+    assert data["checksum"] == "checksum12345"
+    assert data["size_bytes"] == 11
+    assert data["title"] == "My Doc"
+
+
+def test_upload_memory_resource_filestore_not_configured(client):
+    from lib.dal.remote.filestore_client import FileStoreClient
+    from lib.presentation.api import deps
+
+    mock_filestore = FileStoreClient(base_url=None)
+    client.app.dependency_overrides[deps.get_filestore_client] = lambda: mock_filestore
+    service = deps.get_memory_service()
+    service._filestore = mock_filestore
+
+    memory_id = client.post("/api/v1/memories", json={"content": "test memory"}).json()["data"]["id"]
+
+    response = client.post(
+        f"/api/v1/memories/{memory_id}/resources/upload",
+        files={"file": ("doc.txt", b"hello world", "text/plain")},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "filestore_not_configured"
+
