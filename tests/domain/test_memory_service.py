@@ -114,3 +114,68 @@ def test_reinforce_is_distinct_from_access_count(memory_service):
     reinforced = memory_service.reinforce(memory.id)
     assert reinforced.access_count == 2
     assert reinforced.reinforcement_count == 1
+
+
+def test_upload_and_associate_resource_success(memory_repo, tag_repo, entity_repo, resource_repo, document_store):
+    import httpx
+    from lib.dal.remote.filestore_client import FileStoreClient
+    from lib.domain.services.memory_service import MemoryService
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=200,
+            json={
+                "item": {
+                    "key": "mem-upload-key-1",
+                    "checksum_sha256": "sha256checksum",
+                    "size_bytes": 13,
+                    "content_type": "text/plain",
+                }
+            },
+        )
+
+    filestore = FileStoreClient(
+        base_url="http://filestore.local",
+        api_key="secret",
+        transport=httpx.MockTransport(handler),
+    )
+    service = MemoryService(
+        memory_repo=memory_repo,
+        tag_repo=tag_repo,
+        entity_repo=entity_repo,
+        resource_repo=resource_repo,
+        document_store=document_store,
+        filestore_client=filestore,
+    )
+    memory = service.remember(MemoryInput(content="meeting notes"))
+    resource = service.upload_and_associate_resource(
+        memory_id=memory.id,
+        filename="notes.txt",
+        content=b"hello content",
+        content_type="text/plain",
+        relationship="references",
+        title="Notes Document",
+    )
+    assert resource.ownership == "hippocampus"
+    assert resource.status == "available"
+    assert resource.source_system == "fsm"
+    assert resource.resource_type == "file"
+    assert resource.external_id == "mem-upload-key-1"
+    assert resource.uri == "http://filestore.local/hippocampus/media/mem-upload-key-1"
+    assert resource.checksum == "sha256checksum"
+    assert resource.size_bytes == 13
+    assert resource.title == "Notes Document"
+
+
+def test_upload_and_associate_resource_without_filestore_raises(memory_service):
+    from lib.domain.errors import FileStoreNotConfiguredError
+
+    memory = memory_service.remember(MemoryInput(content="notes"))
+    with pytest.raises(FileStoreNotConfiguredError):
+        memory_service.upload_and_associate_resource(
+            memory_id=memory.id,
+            filename="notes.txt",
+            content=b"content",
+            content_type="text/plain",
+        )
+

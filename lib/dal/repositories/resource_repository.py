@@ -30,6 +30,7 @@ class ResourceRepository:
         checksum: Optional[str] = None,
         size_bytes: Optional[int] = None,
         ownership: str = ResourceOwnership.EXTERNAL.value,
+        status: str = ResourceStatus.UNKNOWN.value,
         metadata: Optional[dict[str, Any]] = None,
         session: Optional[Session] = None,
     ) -> Resource:
@@ -65,7 +66,7 @@ class ResourceRepository:
                 checksum=checksum,
                 size_bytes=size_bytes,
                 ownership=ownership,
-                status=ResourceStatus.UNKNOWN.value,
+                status=status,
                 metadata_json=metadata or {},
             )
             s.add(resource)

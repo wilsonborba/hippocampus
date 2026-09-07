@@ -13,14 +13,18 @@ from lib.dal.models import (
     MemoryStatus,
     MemoryType,
     Resource,
+    ResourceOwnership,
+    ResourceStatus,
     Tag,
 )
 from lib.dal.remote.document_store import MemoryDocumentStore
+from lib.dal.remote.filestore_client import FileStoreClient
 from lib.dal.repositories.entity_repository import EntityRepository
 from lib.dal.repositories.memory_repository import MemoryRepository
 from lib.dal.repositories.resource_repository import ResourceRepository
 from lib.dal.repositories.tag_repository import TagRepository, normalize_tag_part
 from lib.domain.errors import (
+    FileStoreNotConfiguredError,
     InvalidMemoryStatusError,
     InvalidRelationshipError,
     MemoryNotFoundError,
@@ -94,12 +98,14 @@ class MemoryService:
         entity_repo: EntityRepository,
         resource_repo: ResourceRepository,
         document_store: MemoryDocumentStore,
+        filestore_client: Optional[FileStoreClient] = None,
     ) -> None:
         self._memories = memory_repo
         self._tags = tag_repo
         self._entities = entity_repo
         self._resources = resource_repo
         self._documents = document_store
+        self._filestore = filestore_client
 
     # -- remember -----------------------------------------------------------------
 
@@ -307,6 +313,44 @@ class MemoryService:
             external_id=external_id, uri=uri,
         )
         self._memories.add_resource_link(memory_id, resource.id, relationship=relationship)
+        return resource
+
+    def upload_and_associate_resource(
+        self,
+        memory_id: str,
+        filename: str,
+        content: bytes,
+        content_type: str,
+        relationship: str = "references",
+        title: Optional[str] = None,
+        source: str = "user",
+    ) -> Resource:
+        self.get(memory_id)
+        _validate_max_length("relationship", relationship, _MAX_ASSOC_FIELD_LENGTHS["resource.relationship"])
+        _validate_max_length("source", source, _MAX_ASSOC_FIELD_LENGTHS["resource.source"])
+        if not self._filestore or not self._filestore.configured:
+            raise FileStoreNotConfiguredError("File Store (FSM) is not configured")
+
+        upload_result = self._filestore.upload(
+            album=f"memory-{memory_id}",
+            filename=filename,
+            body=content,
+            content_type=content_type,
+        )
+
+        resource = self._resources.register(
+            resource_type="file",
+            source_system="fsm",
+            external_id=upload_result.key,
+            uri=upload_result.uri,
+            title=title or filename,
+            content_type=upload_result.content_type,
+            checksum=upload_result.checksum,
+            size_bytes=upload_result.size_bytes,
+            ownership=ResourceOwnership.HIPPOCAMPUS.value,
+            status=ResourceStatus.AVAILABLE.value,
+        )
+        self._memories.add_resource_link(memory_id, resource.id, relationship=relationship, source=source)
         return resource
 
     # -- relationships ------------------------------------------------------------------

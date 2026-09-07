@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 
 from lib.domain.models import MemoryInput, SearchFilters
 from lib.domain.services.memory_service import MemoryService
@@ -135,6 +135,30 @@ def associate_resource(
     resource = service.associate_resource(
         memory_id, body.resource_type, body.source_system, external_id=body.external_id,
         uri=body.uri, relationship=body.relationship,
+    )
+    return DataResponse(data=ResourceOut.model_validate(resource))
+
+
+@router.post("/{memory_id}/resources/upload", status_code=201)
+async def upload_memory_resource(
+    memory_id: str,
+    file: UploadFile = File(...),
+    relationship: str = Form("references"),
+    title: Optional[str] = Form(None),
+    source: str = Form("user"),
+    service: MemoryService = Depends(get_memory_service),
+) -> DataResponse[ResourceOut]:
+    content = await file.read()
+    content_type = file.content_type or "application/octet-stream"
+    filename = file.filename or "upload.bin"
+    resource = service.upload_and_associate_resource(
+        memory_id=memory_id,
+        filename=filename,
+        content=content,
+        content_type=content_type,
+        relationship=relationship,
+        title=title,
+        source=source,
     )
     return DataResponse(data=ResourceOut.model_validate(resource))
 

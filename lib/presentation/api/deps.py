@@ -67,6 +67,7 @@ def get_memory_service() -> MemoryService:
         entity_repo=get_entity_repo(),
         resource_repo=get_resource_repo(),
         document_store=get_document_store(),
+        filestore_client=get_filestore_client(),
     )
 
 
