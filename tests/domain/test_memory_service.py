@@ -4,7 +4,7 @@ import pytest
 
 from lib.dal.models import MemoryStatus
 from lib.domain.errors import InvalidRelationshipError, MemoryNotFoundError, ValidationError
-from lib.domain.models import MemoryInput
+from lib.domain.models import MemoryInput, SearchFilters
 
 
 def test_remember_requires_some_content(memory_service):
@@ -86,6 +86,36 @@ def test_forget_is_logical_not_physical(memory_service):
     assert forgotten.status == MemoryStatus.FORGOTTEN.value
     # provenance/history must remain inspectable after a logical forget
     assert memory_service.provenance(memory.id)
+
+
+def test_forget_refuses_to_cross_a_workspace_boundary(memory_service):
+    """Regression guard: `forget` is about to become reachable from
+    cortex_api's "delete conversation"/"clear all" flow, so a workspace
+    mismatch must fail closed exactly like `get()` already does, never
+    silently forget another tenant's memory."""
+    memory = memory_service.remember(MemoryInput(content="tenant-a's memory", workspace_id="tenant-a"))
+    with pytest.raises(MemoryNotFoundError):
+        memory_service.forget(memory.id, workspace_id="tenant-b")
+    still_active = memory_service.get(memory.id, workspace_id="tenant-a")
+    assert still_active.status == MemoryStatus.ACTIVE.value
+
+
+def test_search_without_explicit_statuses_excludes_forgotten_memories(memory_service):
+    """Regression test: a default search/list (no explicit `statuses`) used
+    to only exclude hard-deleted memories, so a forgotten one kept showing
+    up in any caller's default listing right alongside active ones --
+    cortex_api's memory-graph seeds and its conversation-turn listing both
+    call search this way, so a "deleted" conversation's memories kept
+    reappearing everywhere except a direct-by-id fetch."""
+    memory = memory_service.remember(MemoryInput(content="temporary detail", workspace_id="tenant-a"))
+    memory_service.forget(memory.id, workspace_id="tenant-a")
+
+    results = memory_service.search(SearchFilters(workspace_id="tenant-a"))
+    assert memory.id not in {m.id for m in results}
+
+    # Still fetchable by id directly (forget is logical, not a hard delete).
+    still_gettable = memory_service.get(memory.id, workspace_id="tenant-a")
+    assert still_gettable.status == MemoryStatus.FORGOTTEN.value
 
 
 def test_hard_delete_excludes_from_get(memory_service):

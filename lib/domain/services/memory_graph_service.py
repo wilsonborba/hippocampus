@@ -52,6 +52,7 @@ class MemoryGraphService:
         include_tags: bool = True,
         include_resources: bool = True,
         max_nodes: int = 300,
+        workspace_id: Optional[str] = None,
     ) -> MemoryGraph:
         roots = [r for r in root_ids if r]
         if not roots:
@@ -65,7 +66,7 @@ class MemoryGraphService:
 
         memories_by_id = {}
         for root_id in roots:
-            memory = self._memories.get(root_id)
+            memory = self._memories.get(root_id, workspace_id=workspace_id)
             if memory is None:
                 raise ValidationError(f"memory {root_id!r} not found")
             memories_by_id[root_id] = memory
@@ -87,6 +88,21 @@ class MemoryGraphService:
                     # same row would otherwise be collected twice.
                     if rel.id in seen_relationship_ids:
                         continue
+                    other = (
+                        rel.target_memory_id
+                        if rel.source_memory_id == mid
+                        else rel.source_memory_id
+                    )
+                    # `list_relationships` has no workspace concept (it's a
+                    # plain edge table, not joined against Memory), so a
+                    # relationship can point at a memory in a different
+                    # workspace entirely. Check the neighbor's workspace
+                    # *before* following the edge: never spend `max_nodes`
+                    # budget expanding into another workspace's memories, and
+                    # never surface an edge pointing at one either.
+                    if workspace_id and other not in memories_by_id:
+                        if self._memories.get(other, workspace_id=workspace_id) is None:
+                            continue
                     seen_relationship_ids.add(rel.id)
                     edges.append(
                         GraphEdge(
@@ -95,11 +111,6 @@ class MemoryGraphService:
                             edge_type=rel.relation_type,
                             confidence=rel.confidence,
                         )
-                    )
-                    other = (
-                        rel.target_memory_id
-                        if rel.source_memory_id == mid
-                        else rel.source_memory_id
                     )
                     if other not in seen_memory_ids:
                         if len(seen_memory_ids) >= max_nodes:
@@ -114,7 +125,7 @@ class MemoryGraphService:
                 break
 
         for memory_id in seen_memory_ids - memories_by_id.keys():
-            memory = self._memories.get(memory_id)
+            memory = self._memories.get(memory_id, workspace_id=workspace_id)
             if memory is not None:
                 memories_by_id[memory_id] = memory
 
@@ -124,7 +135,22 @@ class MemoryGraphService:
                 node_type=GraphNodeType.MEMORY.value,
                 label=_memory_label(memory),
                 subtitle=memory.memory_type,
-                metadata={"status": memory.status, "importance": memory.importance},
+                metadata={
+                    "status": memory.status,
+                    "importance": memory.importance,
+                    "created_at": memory.created_at.isoformat() if memory.created_at else None,
+                    # `label` prefers `title` (see `_memory_label`), which is
+                    # the right call when title is a real, human-written one,
+                    # but some callers (e.g. cortex_api) always write the
+                    # same generic auto-generated title for every memory of a
+                    # given kind, making every one of their graph nodes look
+                    # identical/unreadable. Expose the raw content too so
+                    # such a caller's own presentation layer can build a
+                    # better label from it -- that convention is caller-
+                    # specific, not something this generic service should
+                    # know about or special-case itself.
+                    "content_preview": (memory.content or "").strip()[:200] or None,
+                },
             )
             for memory in memories_by_id.values()
         ]

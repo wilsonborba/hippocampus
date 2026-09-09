@@ -21,6 +21,7 @@ _TEXT_MEDIA_TYPE = {"d2": "text/vnd.d2", "mermaid": "text/vnd.mermaid"}
 @router.get("/{memory_id}/graph")
 def get_memory_graph(
     memory_id: str,
+    workspace_id: Optional[str] = None,
     depth: Optional[int] = None,
     relation_types: Optional[str] = Query(None, description="comma-separated relation_type filter"),
     include_entities: bool = True,
@@ -31,7 +32,7 @@ def get_memory_graph(
     memory_service: MemoryService = Depends(get_memory_service),
     graph_service: MemoryGraphService = Depends(get_memory_graph_service),
 ):
-    memory_service.get(memory_id)  # 404s before doing any traversal work
+    memory_service.get(memory_id, workspace_id=workspace_id)  # 404s before doing any traversal work
     graph = graph_service.build_graph(
         [memory_id],
         depth=depth,
@@ -40,6 +41,7 @@ def get_memory_graph(
         include_tags=include_tags,
         include_resources=include_resources,
         max_nodes=max_nodes,
+        workspace_id=workspace_id,
     )
 
     if format == "json":

@@ -50,13 +50,27 @@ class MemoryRepository:
             return _op(s)
 
     def get(
-        self, memory_id: str, include_deleted: bool = False, session: Optional[Session] = None
+        self,
+        memory_id: str,
+        include_deleted: bool = False,
+        workspace_id: Optional[str] = None,
+        session: Optional[Session] = None,
     ) -> Optional[Memory]:
         def _op(s: Session) -> Optional[Memory]:
             m = s.get(Memory, memory_id)
             if m is None:
                 return None
             if not include_deleted and m.status == MemoryStatus.DELETED.value:
+                return None
+            # Fails closed, same as a not-found: a memory outside the
+            # caller's workspace must never be distinguishable from one
+            # that doesn't exist at all (no side-channel confirming its
+            # existence), and this is the one choke point every read path
+            # (including MemoryGraphService's relationship traversal) goes
+            # through, so enforcing it here is what actually stops a graph
+            # BFS from walking across workspace boundaries via a
+            # relationship edge.
+            if workspace_id and m.workspace_id != workspace_id:
                 return None
             return m
 
@@ -95,7 +109,19 @@ class MemoryRepository:
             if statuses:
                 stmt = stmt.where(Memory.status.in_(statuses))
             else:
-                stmt = stmt.where(Memory.status != MemoryStatus.DELETED.value)
+                # A caller not asking for a specific status wants "what's
+                # actually there", which must exclude forgotten memories the
+                # same way it already excludes hard-deleted ones -- forget()
+                # is meant to make a memory stop being recallable (spec: only
+                # its status flips, provenance/history stay), but nothing
+                # upstream actually enforced that until now: any default
+                # list/search (e.g. cortex_api's `GET /memories?tag=...`,
+                # which backs both its memory-graph seeds and its
+                # conversation-turn listing) kept returning forgotten
+                # memories right alongside active ones.
+                stmt = stmt.where(
+                    Memory.status.not_in([MemoryStatus.DELETED.value, MemoryStatus.FORGOTTEN.value])
+                )
             if created_after:
                 stmt = stmt.where(Memory.created_at >= created_after)
             if created_before:
