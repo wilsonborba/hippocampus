@@ -82,6 +82,36 @@ def test_build_graph_can_exclude_auxiliary_nodes(memory_service, memory_graph_se
     assert GraphNodeType.TAG.value not in {n.node_type for n in graph.nodes}
 
 
+def test_build_graph_never_crosses_workspace_boundary_via_relationship(memory_service, memory_graph_service):
+    # Same setup as test_build_graph_includes_related_memories_within_depth,
+    # except b/c live in a different workspace than the root a. A BFS
+    # traversal must never surface b/c as nodes, nor the edges to them,
+    # once workspace_id is enforced -- a relationship row alone must not be
+    # enough to cross the boundary.
+    a = memory_service.remember(MemoryInput(content="a", workspace_id="tenant-a"))
+    b = memory_service.remember(MemoryInput(content="b", workspace_id="tenant-b"))
+    c = memory_service.remember(MemoryInput(content="c", workspace_id="tenant-b"))
+    memory_service.link(a.id, "related_to", b.id)
+    memory_service.link(b.id, "related_to", c.id)
+
+    graph = memory_graph_service.build_graph([a.id], depth=2, workspace_id="tenant-a")
+    ids = {n.id for n in graph.nodes}
+    assert ids == {a.id}
+    assert graph.edges == []
+
+    # Without workspace_id (internal/trusted caller), the full graph is
+    # still reachable -- this proves the isolation is opt-in scoping, not
+    # a broken relationship traversal.
+    unscoped = memory_graph_service.build_graph([a.id], depth=2)
+    assert {n.id for n in unscoped.nodes} == {a.id, b.id, c.id}
+
+
+def test_build_graph_root_outside_workspace_is_not_found(memory_service, memory_graph_service):
+    memory = memory_service.remember(MemoryInput(content="secret", workspace_id="tenant-a"))
+    with pytest.raises(ValidationError):
+        memory_graph_service.build_graph([memory.id], workspace_id="tenant-b")
+
+
 def test_build_graph_clusters_above_threshold(memory_service, memory_repo, tag_repo, entity_repo, resource_repo):
     root = memory_service.remember(MemoryInput(content="root"))
     for i in range(10):

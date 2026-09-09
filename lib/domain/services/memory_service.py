@@ -205,8 +205,10 @@ class MemoryService:
 
     # -- read -----------------------------------------------------------------------
 
-    def get(self, memory_id: str, touch: bool = False) -> Memory:
-        memory = self._memories.get(memory_id)
+    def get(self, memory_id: str, touch: bool = False, workspace_id: Optional[str] = None) -> Memory:
+        memory = self._memories.get(
+            memory_id, workspace_id=normalize_workspace_id(workspace_id) if workspace_id else None
+        )
         if memory is None:
             raise MemoryNotFoundError(f"memory {memory_id!r} not found")
         if touch:

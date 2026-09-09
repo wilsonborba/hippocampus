@@ -51,8 +51,12 @@ def create_memory(
 
 
 @router.get("/{memory_id}")
-def get_memory(memory_id: str, service: MemoryService = Depends(get_memory_service)) -> DataResponse[MemoryOut]:
-    memory = service.get(memory_id, touch=True)
+def get_memory(
+    memory_id: str,
+    workspace_id: Optional[str] = None,
+    service: MemoryService = Depends(get_memory_service),
+) -> DataResponse[MemoryOut]:
+    memory = service.get(memory_id, touch=True, workspace_id=workspace_id)
     return DataResponse(data=MemoryOut.model_validate(memory))
 
 

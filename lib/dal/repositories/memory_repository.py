@@ -50,13 +50,27 @@ class MemoryRepository:
             return _op(s)
 
     def get(
-        self, memory_id: str, include_deleted: bool = False, session: Optional[Session] = None
+        self,
+        memory_id: str,
+        include_deleted: bool = False,
+        workspace_id: Optional[str] = None,
+        session: Optional[Session] = None,
     ) -> Optional[Memory]:
         def _op(s: Session) -> Optional[Memory]:
             m = s.get(Memory, memory_id)
             if m is None:
                 return None
             if not include_deleted and m.status == MemoryStatus.DELETED.value:
+                return None
+            # Fails closed, same as a not-found: a memory outside the
+            # caller's workspace must never be distinguishable from one
+            # that doesn't exist at all (no side-channel confirming its
+            # existence), and this is the one choke point every read path
+            # (including MemoryGraphService's relationship traversal) goes
+            # through, so enforcing it here is what actually stops a graph
+            # BFS from walking across workspace boundaries via a
+            # relationship edge.
+            if workspace_id and m.workspace_id != workspace_id:
                 return None
             return m
 
