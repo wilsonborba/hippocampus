@@ -219,9 +219,12 @@ def archive_memory(memory_id: str, service: MemoryService = Depends(get_memory_s
 
 @router.post("/{memory_id}/forget")
 def forget_memory(
-    memory_id: str, body: ForgetRequest, service: MemoryService = Depends(get_memory_service)
+    memory_id: str,
+    body: ForgetRequest,
+    workspace_id: Optional[str] = None,
+    service: MemoryService = Depends(get_memory_service),
 ) -> DataResponse[dict]:
-    service.forget(memory_id, reason=body.reason)
+    service.forget(memory_id, reason=body.reason, workspace_id=workspace_id)
     return DataResponse(data={"memory_id": memory_id, "status": "forgotten"})
 
 

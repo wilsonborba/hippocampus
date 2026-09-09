@@ -444,11 +444,14 @@ class MemoryService:
         self._memories.add_event(memory_id, MemoryEventType.ARCHIVED.value)
         return memory  # type: ignore[return-value]
 
-    def forget(self, memory_id: str, reason: Optional[str] = None) -> Memory:
+    def forget(self, memory_id: str, reason: Optional[str] = None, workspace_id: Optional[str] = None) -> Memory:
         """Logical forgetting only (spec Part 4 §65-67, Part 7 §21-22): status
         flips, provenance/history stay. Hard deletion is a separate, explicit
-        operation — see `hard_delete`."""
-        self.get(memory_id)
+        operation — see `hard_delete`. [workspace_id], when given, is
+        enforced the same fail-closed way as `get()` -- this is about to
+        become reachable from cortex_api's "delete conversation" flow, so it
+        must never let one tenant forget another tenant's memory."""
+        self.get(memory_id, workspace_id=workspace_id)
         memory = self._memories.set_status(memory_id, MemoryStatus.FORGOTTEN.value)
         self._memories.add_event(memory_id, MemoryEventType.FORGOTTEN.value, payload={"reason": reason})
         return memory  # type: ignore[return-value]
