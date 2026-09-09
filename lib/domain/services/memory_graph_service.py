@@ -139,6 +139,17 @@ class MemoryGraphService:
                     "status": memory.status,
                     "importance": memory.importance,
                     "created_at": memory.created_at.isoformat() if memory.created_at else None,
+                    # `label` prefers `title` (see `_memory_label`), which is
+                    # the right call when title is a real, human-written one,
+                    # but some callers (e.g. cortex_api) always write the
+                    # same generic auto-generated title for every memory of a
+                    # given kind, making every one of their graph nodes look
+                    # identical/unreadable. Expose the raw content too so
+                    # such a caller's own presentation layer can build a
+                    # better label from it -- that convention is caller-
+                    # specific, not something this generic service should
+                    # know about or special-case itself.
+                    "content_preview": (memory.content or "").strip()[:200] or None,
                 },
             )
             for memory in memories_by_id.values()
