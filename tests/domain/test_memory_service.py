@@ -88,6 +88,18 @@ def test_forget_is_logical_not_physical(memory_service):
     assert memory_service.provenance(memory.id)
 
 
+def test_forget_refuses_to_cross_a_workspace_boundary(memory_service):
+    """Regression guard: `forget` is about to become reachable from
+    cortex_api's "delete conversation"/"clear all" flow, so a workspace
+    mismatch must fail closed exactly like `get()` already does, never
+    silently forget another tenant's memory."""
+    memory = memory_service.remember(MemoryInput(content="tenant-a's memory", workspace_id="tenant-a"))
+    with pytest.raises(MemoryNotFoundError):
+        memory_service.forget(memory.id, workspace_id="tenant-b")
+    still_active = memory_service.get(memory.id, workspace_id="tenant-a")
+    assert still_active.status == MemoryStatus.ACTIVE.value
+
+
 def test_hard_delete_excludes_from_get(memory_service):
     memory = memory_service.remember(MemoryInput(content="to be deleted"))
     memory_service.hard_delete(memory.id)
