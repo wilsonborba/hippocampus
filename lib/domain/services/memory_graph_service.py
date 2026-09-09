@@ -135,7 +135,11 @@ class MemoryGraphService:
                 node_type=GraphNodeType.MEMORY.value,
                 label=_memory_label(memory),
                 subtitle=memory.memory_type,
-                metadata={"status": memory.status, "importance": memory.importance},
+                metadata={
+                    "status": memory.status,
+                    "importance": memory.importance,
+                    "created_at": memory.created_at.isoformat() if memory.created_at else None,
+                },
             )
             for memory in memories_by_id.values()
         ]
