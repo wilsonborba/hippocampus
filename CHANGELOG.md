@@ -53,6 +53,8 @@
 
 - Merge #23 bulk-delete
 
+- Merge #24 scoped-personas
+
 
 ### Features
 
@@ -71,6 +73,8 @@
 - Bulk-delete (#23)
 
 - Scoped-personas (#24)
+
+- Persona-schemas (#25)
 
 
 ## v1.0.0 - 2026-11-09

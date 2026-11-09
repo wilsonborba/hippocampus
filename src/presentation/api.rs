@@ -47,6 +47,16 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/entities/search", get(search_entities))
         .route("/api/v1/entities", get(list_personas).post(create_persona))
         .route("/api/v1/entities/match", post(match_personas))
+        .route("/api/v1/persona-schemas", post(draft_persona_schema))
+        .route("/api/v1/persona-schemas/{name}", get(latest_persona_schema))
+        .route(
+            "/api/v1/persona-schemas/{name}/versions/{version}",
+            get(read_persona_schema),
+        )
+        .route(
+            "/api/v1/persona-schemas/{name}/versions/{version}/publish",
+            post(publish_persona_schema),
+        )
         .route("/api/v1/consolidation", post(consolidate))
         .route("/api/v1/files", post(upload_file))
         .route(
@@ -104,6 +114,7 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/entities/{id}",
             get(read_entity)
                 .patch(update_persona)
+                .delete(delete_persona)
                 .on(axum::routing::MethodFilter::HEAD, wrong_method),
         )
         .route_layer(middleware::from_fn_with_state(state.clone(), auth));
@@ -394,12 +405,9 @@ async fn read_entity(
             return Err(Error::not_found("entity", &id));
         }
         if persona {
-            let entities = crate::domain::services::personas::list(&s.service.store, scope).await?;
             return Ok(data(
-                entities
-                    .into_iter()
-                    .find(|p| p["id"] == id)
-                    .ok_or_else(|| Error::not_found("entity", &id))?,
+                crate::domain::services::personas::get(&s.service.store, &s.documents, &id, scope)
+                    .await?,
             ));
         }
     }
@@ -420,7 +428,7 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         (
             self.status,
-            Json(json!({"error":{"code":self.name,"message":self.message,"details":{}}})),
+            Json(json!({"error":{"code":self.name,"message":self.message,"details":self.details}})),
         )
             .into_response()
     }
@@ -711,7 +719,8 @@ async fn list_personas(
     ApiQuery(f): ApiQuery,
 ) -> Result<Json<Value>, Error> {
     let mut values =
-        crate::domain::services::personas::list(&s.service.store, persona_scope(&f)?).await?;
+        crate::domain::services::personas::list(&s.service.store, &s.documents, persona_scope(&f)?)
+            .await?;
     if let Some(q) = f.get("q") {
         values.retain(|v| {
             v["canonical_name"]
@@ -732,7 +741,7 @@ async fn create_persona(
 ) -> Result<(StatusCode, Json<Value>), Error> {
     Ok((
         StatusCode::CREATED,
-        data(crate::domain::services::personas::create(&s.service.store, r).await?),
+        data(crate::domain::services::personas::create(&s.service.store, &s.documents, r).await?),
     ))
 }
 async fn update_persona(
@@ -741,7 +750,7 @@ async fn update_persona(
     ApiJson(r): ApiJson<crate::domain::models::personas::PersonaUpdate>,
 ) -> Result<Json<Value>, Error> {
     Ok(data(
-        crate::domain::services::personas::update(&s.service.store, &id, r).await?,
+        crate::domain::services::personas::update(&s.service.store, &s.documents, &id, r).await?,
     ))
 }
 async fn match_personas(
@@ -749,6 +758,62 @@ async fn match_personas(
     ApiJson(r): ApiJson<crate::domain::models::personas::PersonaMatch>,
 ) -> Result<Json<Value>, Error> {
     Ok(data(json!(
-        crate::domain::services::personas::matches(&s.service.store, r).await?
+        crate::domain::services::personas::matches(&s.service.store, &s.documents, r).await?
+    )))
+}
+
+async fn delete_persona(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    let scope = serde_json::from_value(serde_json::to_value(f).expect("query values"))
+        .map_err(|_| Error::invalid("workspace_id and app_id are required"))?;
+    crate::domain::services::personas::delete(&s.service.store, &s.documents, &id, scope).await?;
+    Ok(data(Value::Null))
+}
+async fn draft_persona_schema(
+    State(s): State<AppState>,
+    ApiJson(r): ApiJson<crate::domain::models::persona_schema::SchemaDraft>,
+) -> Result<(StatusCode, Json<Value>), Error> {
+    Ok((
+        StatusCode::CREATED,
+        data(json!(
+            crate::domain::services::persona_schemas::draft(&s.service.store, r).await?
+        )),
+    ))
+}
+async fn latest_persona_schema(
+    State(s): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(json!(s.service.store.schema(&name, None).await?)))
+}
+fn schema_version(s: &str) -> Result<i64, Error> {
+    s.parse::<i64>()
+        .ok()
+        .filter(|v| *v > 0)
+        .ok_or_else(|| Error::invalid("Schema version must be positive"))
+}
+async fn read_persona_schema(
+    State(s): State<AppState>,
+    Path((name, version)): Path<(String, String)>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(json!(
+        s.service
+            .store
+            .schema(&name, Some(schema_version(&version)?))
+            .await?
+    )))
+}
+async fn publish_persona_schema(
+    State(s): State<AppState>,
+    Path((name, version)): Path<(String, String)>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(json!(
+        s.service
+            .store
+            .publish_schema(&name, schema_version(&version)?)
+            .await?
     )))
 }

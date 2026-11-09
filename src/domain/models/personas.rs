@@ -2,6 +2,8 @@ use super::scope::{ReadScope, WriteScope};
 use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct PersonaCreate {
+    #[serde(default, deserialize_with = "attributes")]
+    pub attributes: Option<serde_json::Value>,
     #[serde(flatten)]
     pub scope: WriteScope,
     pub entity_type: String,
@@ -13,6 +15,8 @@ pub struct PersonaCreate {
 }
 #[derive(Deserialize)]
 pub struct PersonaUpdate {
+    #[serde(default, deserialize_with = "attributes")]
+    pub attributes: Option<serde_json::Value>,
     #[serde(flatten)]
     pub scope: WriteScope,
     pub canonical_name: Option<String>,
@@ -24,4 +28,10 @@ pub struct PersonaMatch {
     #[serde(flatten)]
     pub scope: ReadScope,
     pub text: String,
+}
+
+fn attributes<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Option<serde_json::Value>, D::Error> {
+    serde_json::Value::deserialize(d).map(Some)
 }

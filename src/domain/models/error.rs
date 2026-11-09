@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 #[derive(Debug)]
 pub struct Error {
+    pub details: serde_json::Value,
     pub status: StatusCode,
     pub name: &'static str,
     pub message: String,
@@ -8,10 +9,15 @@ pub struct Error {
 impl Error {
     pub fn new(status: StatusCode, name: &'static str, message: impl Into<String>) -> Self {
         Self {
+            details: serde_json::json!({}),
             status,
             name,
             message: message.into(),
         }
+    }
+    pub fn with_details(mut self, details: serde_json::Value) -> Self {
+        self.details = details;
+        self
     }
     pub fn invalid(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, "invalid_request", message)

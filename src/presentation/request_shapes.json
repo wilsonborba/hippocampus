@@ -974,6 +974,11 @@
       "schema": {
         "type": "boolean"
       }
+    },
+    {
+      "name": "attributes",
+      "required": false,
+      "schema": {}
     }
   ],
   "PersonaUpdate": [
@@ -1028,6 +1033,11 @@
       "schema": {
         "type": "boolean"
       }
+    },
+    {
+      "name": "attributes",
+      "required": false,
+      "schema": {}
     }
   ],
   "PersonaMatch": [
@@ -1064,6 +1074,50 @@
       "required": true,
       "schema": {
         "type": "string"
+      }
+    }
+  ],
+  "SchemaDraft": [
+    {
+      "name": "schema_name",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "version",
+      "required": true,
+      "schema": {
+        "type": "integer"
+      }
+    },
+    {
+      "name": "fields",
+      "required": true,
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "in_context": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "name",
+            "type"
+          ]
+        }
       }
     }
   ]

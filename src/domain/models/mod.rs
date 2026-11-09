@@ -3,6 +3,8 @@ pub mod deletion;
 pub mod embedding;
 pub mod error;
 pub mod files;
+pub mod guardrail;
+pub mod persona_schema;
 pub mod personas;
 pub mod scope;
 pub mod search;

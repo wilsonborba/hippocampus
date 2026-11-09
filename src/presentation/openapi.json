@@ -1626,6 +1626,54 @@
             "description": "Scoped name or is_self conflict."
           }
         }
+      },
+      "delete": {
+        "summary": "Delete a scoped persona and its attribute document",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted or already absent."
+          },
+          "404": {
+            "description": "Persona outside scope."
+          },
+          "502": {
+            "description": "Document store failed; PostgreSQL rolled back."
+          }
+        }
       }
     },
     "/api/v1/resources": {
@@ -2365,6 +2413,131 @@
         "responses": {
           "200": {
             "description": "Matched scoped personas."
+          }
+        }
+      }
+    },
+    "/api/v1/persona-schemas": {
+      "post": {
+        "summary": "Save a draft persona schema version",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft version."
+          },
+          "409": {
+            "description": "Published version is immutable."
+          },
+          "422": {
+            "description": "Definition errors with field paths."
+          }
+        }
+      }
+    },
+    "/api/v1/persona-schemas/{name}": {
+      "get": {
+        "summary": "Latest published persona schema fields",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "person",
+                "bot"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema name, version, status, and fields (name, type, required, in_context)."
+          },
+          "404": {
+            "description": "Version or published schema not found."
+          }
+        }
+      }
+    },
+    "/api/v1/persona-schemas/{name}/versions/{version}": {
+      "get": {
+        "summary": "One persona schema version",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "person",
+                "bot"
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema name, version, status, and fields (name, type, required, in_context)."
+          },
+          "404": {
+            "description": "Version or published schema not found."
+          }
+        }
+      }
+    },
+    "/api/v1/persona-schemas/{name}/versions/{version}/publish": {
+      "post": {
+        "summary": "Publish a persona schema draft",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "person",
+                "bot"
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema name, version, status, and fields (name, type, required, in_context)."
+          },
+          "404": {
+            "description": "Version or published schema not found."
           }
         }
       }
@@ -4126,7 +4299,8 @@
           },
           "is_self": {
             "type": "boolean"
-          }
+          },
+          "attributes": {}
         },
         "required": [
           "workspace_id",
@@ -4165,7 +4339,8 @@
           },
           "is_self": {
             "type": "boolean"
-          }
+          },
+          "attributes": {}
         },
         "required": [
           "workspace_id",
@@ -4198,6 +4373,46 @@
         "required": [
           "workspace_id",
           "text"
+        ]
+      },
+      "SchemaDraft": {
+        "type": "object",
+        "properties": {
+          "schema_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "in_context": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "schema_name",
+          "version",
+          "fields"
         ]
       }
     }
