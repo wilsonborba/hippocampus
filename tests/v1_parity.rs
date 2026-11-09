@@ -233,6 +233,34 @@ async fn unchanged_http_contracts() {
             200,
         )
         .await;
+        let visible = call(
+            &c,
+            base,
+            "GET",
+            &format!("/api/v1/memories?workspace_id={workspace}"),
+            None,
+            200,
+        )
+        .await;
+        assert!(
+            visible["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|m| m["id"] != id)
+        );
+        assert_eq!(
+            call(
+                &c,
+                base,
+                "GET",
+                &format!("/api/v1/memories?workspace_id={workspace}&status=forgotten"),
+                None,
+                200
+            )
+            .await["data"][0]["id"],
+            id
+        );
         assert_eq!(
             call(&c, base, "POST", &format!("{path}/restore"), None, 200).await["data"]["status"],
             "active"

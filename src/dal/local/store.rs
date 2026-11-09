@@ -169,9 +169,10 @@ impl Store {
         &self,
         filters: &std::collections::BTreeMap<String, String>,
     ) -> Result<Vec<Value>, Error> {
-        let mut q = QueryBuilder::<Postgres>::new(
-            "SELECT row_to_json(m) FROM memory m WHERE status != 'deleted'",
-        );
+        let mut q = QueryBuilder::<Postgres>::new("SELECT row_to_json(m) FROM memory m WHERE 1=1");
+        if !filters.contains_key("status") {
+            q.push(" AND status NOT IN ('deleted','forgotten')");
+        }
         for key in ["workspace_id", "app_id", "memory_type", "status"] {
             if let Some(value) = filters.get(key) {
                 let value = value.clone();
