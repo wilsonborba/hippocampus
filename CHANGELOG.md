@@ -43,6 +43,8 @@
 
 - Merge #16 keep interactive maintenance reports visible
 
+- Merge #17 embed all memories through an optional provider
+
 
 ### Features
 
@@ -51,6 +53,8 @@
 - Migrate the isolated v1 memory copy (#19)
 
 - Embed all memories through an optional provider (#17)
+
+- Store files and their extracted text through FSM (#20)
 
 
 ## v1.0.0 - 2026-11-09

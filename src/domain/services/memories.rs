@@ -17,6 +17,7 @@ const TYPES: &[&str] = &[
     "instruction",
     "correction",
     "artifact",
+    "file",
     "derived",
 ];
 const RELATIONS: &[&str] = &[
