@@ -1,3 +1,4 @@
+pub mod deletion;
 pub mod embeddings;
 pub mod files;
 pub mod memories;

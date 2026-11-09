@@ -80,6 +80,24 @@ impl FsmClient {
     }
 }
 impl FileStore for FsmClient {
+    fn delete<'a>(&'a self, key: &'a str) -> Pending<'a, Result<(), Error>> {
+        Box::pin(async move {
+            let response = self
+                .client
+                .delete(self.url(Some(key))?)
+                .bearer_auth(self.key.as_deref().expect("configured key"))
+                .send()
+                .await
+                .map_err(|_| failure("File Store delete failed"))?;
+            if response.status().is_success() || response.status() == reqwest::StatusCode::NOT_FOUND
+            {
+                Ok(())
+            } else {
+                Err(failure("File Store delete failed"))
+            }
+        })
+    }
+
     fn upload<'a>(
         &'a self,
         album: &'a str,

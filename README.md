@@ -179,3 +179,24 @@ another user's memory or entity.
 `GET /api/v1/tags/search` and `GET /api/v1/entities/search` require the same
 scope. They keep `q` and `limit` (default 20) from v1. Only names linked to
 active memories in that scope are returned.
+
+### Hard delete
+
+`POST /api/v1/memories/delete` accepts `memory_ids`, `workspace_id`, `app_id`
+and optional `user_id` (empty or null for A2A). All existing ids must match
+the exact scope. Missing ids are ignored. The data array lists removed ids.
+
+The transaction removes memory rows, joins, events, vectors and unused tags.
+It removes a file resource only after the last memory link. For files owned
+by Hippocampus in FSM, it calls FSM DELETE with the configured app and key.
+It never follows a resource URI to delete files. External resource metadata
+can be removed, but files owned by other apps are not deleted.
+
+Memory document cleanup and owned FSM cleanup run before the PostgreSQL
+commit. A remote failure rolls back PostgreSQL. External deletes are safe
+to repeat, including a 404. The stores do not share an atomic transaction.
+There is no background retry or retry table. The caller retries the request.
+
+The CLI keeps `memory delete ID --hard --yes`, with required `--workspace`,
+optional `--app` (default hippocampus), and optional `--user` (default A2A).
+`memory forget` remains the logical operation.

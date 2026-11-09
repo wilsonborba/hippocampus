@@ -1,4 +1,5 @@
 pub mod api;
+pub mod deletion;
 pub mod embedding;
 pub mod error;
 pub mod files;

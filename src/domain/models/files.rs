@@ -29,6 +29,7 @@ pub struct Download {
     pub filename: String,
 }
 pub trait FileStore: Send + Sync {
+    fn delete<'a>(&'a self, key: &'a str) -> Pending<'a, Result<(), Error>>;
     fn upload<'a>(
         &'a self,
         album: &'a str,

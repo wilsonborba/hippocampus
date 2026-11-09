@@ -40,6 +40,7 @@ fn outs(values: Vec<Value>, table: Table) -> Json<Value> {
 pub fn router(state: AppState) -> Router {
     let private = Router::new()
         .route("/api/v1/search", post(search))
+        .route("/api/v1/memories/delete", post(delete_memories))
         .route("/api/v1/graph", get(scope_graph))
         .route("/api/v1/graph/nodes/{id}", get(node_context))
         .route("/api/v1/tags/search", get(search_tags))
@@ -648,4 +649,19 @@ async fn search_entities(
     Ok(data(
         crate::domain::services::scoped_graph::names(&s.service.store, &f, Table::Entity).await?,
     ))
+}
+
+async fn delete_memories(
+    State(s): State<AppState>,
+    ApiJson(request): ApiJson<crate::domain::models::deletion::DeleteRequest>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(json!(
+        crate::domain::services::deletion::delete(
+            &s.service.store,
+            s.filestore.as_ref(),
+            &s.documents,
+            request
+        )
+        .await?
+    )))
 }

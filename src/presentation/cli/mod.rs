@@ -166,6 +166,19 @@ enum MemoryCommand {
         #[arg(long = "tag")]
         tags: Vec<String>,
     },
+    Delete {
+        memory_id: String,
+        #[arg(long)]
+        hard: bool,
+        #[arg(long)]
+        yes: bool,
+        #[arg(long)]
+        workspace: String,
+        #[arg(long, default_value = "hippocampus")]
+        app: String,
+        #[arg(long)]
+        user: Option<String>,
+    },
     Get(Id),
     List(ListArgs),
     Tag {
@@ -323,6 +336,49 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                     &pick(&memory, &["id", "workspace_id", "memory_type", "status"]),
                     json_output,
                     Some("Memory created"),
+                );
+            }
+            MemoryCommand::Delete {
+                memory_id,
+                hard,
+                yes,
+                workspace,
+                app,
+                user,
+            } => {
+                if !hard {
+                    return Err(Error::invalid("Use memory forget or pass --hard"));
+                }
+                if !yes {
+                    if !io::stdin().is_terminal() {
+                        return Err(Error::invalid("Pass --yes for non-interactive hard delete"));
+                    }
+                    eprintln!("Permanently delete memory {memory_id}? [y/N]");
+                    let mut answer = String::new();
+                    io::stdin().read_line(&mut answer).map_err(io_error)?;
+                    if !["y", "yes"].contains(&answer.trim().to_lowercase().as_str()) {
+                        return Err(Error::invalid("Delete cancelled"));
+                    }
+                }
+                let request = crate::domain::models::deletion::DeleteRequest {
+                    scope: crate::domain::models::scope::WriteScope {
+                        workspace_id: workspace,
+                        app_id: app,
+                        user_id: user,
+                    },
+                    memory_ids: vec![memory_id.clone()],
+                };
+                crate::domain::services::deletion::delete(
+                    &service.store,
+                    state.filestore.as_ref(),
+                    &state.documents,
+                    request,
+                )
+                .await?;
+                emit(
+                    &json!({"memory_id":memory_id,"status":"deleted"}),
+                    json_output,
+                    Some("Memory deleted"),
                 );
             }
             MemoryCommand::Get(Id { memory_id }) => {
