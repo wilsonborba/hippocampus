@@ -8,6 +8,8 @@
 
 - Keep interactive maintenance reports visible (#16)
 
+- Cli-readable-summary (#30)
+
 
 ### Chores
 
@@ -54,6 +56,8 @@
 - Merge #23 bulk-delete
 
 - Merge #24 scoped-personas
+
+- Merge #25 persona-schemas
 
 
 ### Features
