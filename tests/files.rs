@@ -121,6 +121,7 @@ async fn upload_empty_text_download_scope_and_failure() {
     .await;
     let documents = Documents::default();
     let state = AppState {
+        embedding: hippocampus::dal::remote::embeddings::configured(&Default::default()),
         service: MemoryService {
             store: Store { pool: pool.clone() },
         },

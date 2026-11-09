@@ -1949,6 +1949,27 @@
           }
         }
       }
+    },
+    "/api/v1/search": {
+      "post": {
+        "summary": "Search scoped memories",
+        "description": "Simple full-text terms use AND. Rank all filtered vectors when configured, then merge with RRF k=60. No text returns filtered rows in stable id order. Expansion keeps all hard filters and adds linked results after the ranked limit. Thai word matching is weak without spaces.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data array of memory, score and match_reasons. Empty when no match."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3570,6 +3591,74 @@
         },
         "required": [
           "data"
+        ]
+      },
+      "SearchRequest": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "app_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Omit for all users. Null or empty selects A2A."
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "All tags must match."
+          },
+          "entity_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "memory_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "historical": {
+            "type": "boolean",
+            "default": false
+          },
+          "expand": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 20
+          }
+        },
+        "required": [
+          "workspace_id"
         ]
       }
     }

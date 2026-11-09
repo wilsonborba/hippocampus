@@ -770,5 +770,107 @@
         "default": "user"
       }
     }
+  ],
+  "SearchRequest": [
+    {
+      "name": "workspace_id",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    {
+      "name": "app_id",
+      "required": false,
+      "schema": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    {
+      "name": "user_id",
+      "required": false,
+      "schema": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Omit for all users. Null or empty selects A2A."
+      }
+    },
+    {
+      "name": "text",
+      "required": false,
+      "schema": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [],
+        "description": "All tags must match."
+      }
+    },
+    {
+      "name": "entity_ids",
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      }
+    },
+    {
+      "name": "memory_types",
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      }
+    },
+    {
+      "name": "historical",
+      "required": false,
+      "schema": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    {
+      "name": "expand",
+      "required": false,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3,
+        "default": 0
+      }
+    },
+    {
+      "name": "limit",
+      "required": false,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 20
+      }
+    }
   ]
 }

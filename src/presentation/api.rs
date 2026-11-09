@@ -19,6 +19,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct AppState {
+    pub embedding: Arc<dyn crate::domain::models::embedding::EmbeddingSource>,
     pub filestore: Arc<dyn crate::domain::models::files::FileStore>,
     pub service: MemoryService,
     pub documents: Documents,
@@ -38,6 +39,7 @@ fn outs(values: Vec<Value>, table: Table) -> Json<Value> {
 
 pub fn router(state: AppState) -> Router {
     let private = Router::new()
+        .route("/api/v1/search", post(search))
         .route("/api/v1/consolidation", post(consolidate))
         .route("/api/v1/files", post(upload_file))
         .route(
@@ -594,4 +596,18 @@ async fn download_file(
             .expect("encoded filename"),
     );
     Ok(response)
+}
+
+async fn search(
+    State(state): State<AppState>,
+    ApiJson(request): ApiJson<crate::domain::models::search::SearchRequest>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::search::search(
+            &state.service.store,
+            state.embedding.as_ref(),
+            request,
+        )
+        .await?,
+    ))
 }

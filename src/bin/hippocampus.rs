@@ -23,6 +23,7 @@ async fn main() {
             .await
             .map_err(|_| "The test database connection failed".to_owned())?;
         let state = AppState {
+            embedding: hippocampus::dal::remote::embeddings::configured(&Default::default()),
             filestore: std::sync::Arc::new(
                 hippocampus::dal::remote::files::FsmClient::from_environment(),
             ),
