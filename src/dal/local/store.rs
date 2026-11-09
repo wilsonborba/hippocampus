@@ -296,11 +296,16 @@ impl Store {
         actor: Option<&str>,
         normalized: &str,
     ) -> Result<Value, Error> {
-        let rows=self.values("SELECT row_to_json(e) FROM entity e WHERE (entity_type=$1 AND normalized_name=$2) OR (entity_type=$1 AND id IN (SELECT entity_id FROM entity_alias WHERE normalized_alias=$2)) LIMIT 1",&[body.entity_type.clone(),normalized.to_owned()]).await?;
+        let memory = self
+            .get(Table::Memory, id)
+            .await?
+            .ok_or_else(|| Error::not_found("memory", id))?;
+        let rows:Vec<Value>=sqlx::query_scalar("SELECT row_to_json(e) FROM entity e WHERE workspace_id=$1 AND app_id=$2 AND user_id IS NOT DISTINCT FROM $3 AND entity_type=$4 AND (normalized_name=$5 OR id IN (SELECT entity_id FROM entity_alias WHERE normalized_alias=$5)) LIMIT 1")
+        .bind(memory["workspace_id"].as_str().unwrap()).bind(memory["app_id"].as_str().unwrap()).bind(memory["user_id"].as_str()).bind(&body.entity_type).bind(normalized).fetch_all(&self.pool).await?;
         let entity = if let Some(v) = rows.first() {
             v.clone()
         } else {
-            self.insert(Table::Entity,json!({"entity_type":body.entity_type,"canonical_name":body.canonical_name,"normalized_name":normalized,"status":"active","metadata_json":{}})).await?
+            self.insert(Table::Entity,json!({"entity_type":body.entity_type,"canonical_name":body.canonical_name,"normalized_name":normalized,"status":"active","metadata_json":{},"workspace_id":memory["workspace_id"],"app_id":memory["app_id"],"user_id":memory["user_id"],"is_self":false})).await?
         };
         let entity_id = entity["id"].as_str().expect("entity id");
         let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM memory_entity WHERE memory_id=$1 AND entity_id=$2 AND role IS NOT DISTINCT FROM $3)").bind(id).bind(entity_id).bind(&body.role).fetch_one(&self.pool).await?;

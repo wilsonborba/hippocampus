@@ -51,6 +51,8 @@
 
 - Merge #22 scoped-graph
 
+- Merge #23 bulk-delete
+
 
 ### Features
 
@@ -67,6 +69,8 @@
 - Scoped-graph (#22)
 
 - Bulk-delete (#23)
+
+- Scoped-personas (#24)
 
 
 ## v1.0.0 - 2026-11-09

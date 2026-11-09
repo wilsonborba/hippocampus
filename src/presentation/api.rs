@@ -45,6 +45,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/graph/nodes/{id}", get(node_context))
         .route("/api/v1/tags/search", get(search_tags))
         .route("/api/v1/entities/search", get(search_entities))
+        .route("/api/v1/entities", get(list_personas).post(create_persona))
+        .route("/api/v1/entities/match", post(match_personas))
         .route("/api/v1/consolidation", post(consolidate))
         .route("/api/v1/files", post(upload_file))
         .route(
@@ -100,7 +102,9 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/entities/{id}",
-            get(read_entity).on(axum::routing::MethodFilter::HEAD, wrong_method),
+            get(read_entity)
+                .patch(update_persona)
+                .on(axum::routing::MethodFilter::HEAD, wrong_method),
         )
         .route_layer(middleware::from_fn_with_state(state.clone(), auth));
     Router::new()
@@ -361,15 +365,45 @@ async fn read_resource(
 async fn read_entity(
     State(s): State<AppState>,
     Path(id): Path<String>,
+    ApiQuery(f): ApiQuery,
 ) -> Result<Json<Value>, Error> {
-    Ok(out(
-        s.service
-            .store
-            .get(Table::Entity, &id)
-            .await?
-            .ok_or_else(|| Error::not_found("entity", &id))?,
-        Table::Entity,
-    ))
+    let entity = s
+        .service
+        .store
+        .get(Table::Entity, &id)
+        .await?
+        .ok_or_else(|| Error::not_found("entity", &id))?;
+    let persona = matches!(entity["entity_type"].as_str(), Some("person" | "bot"));
+    if persona || f.contains_key("workspace_id") {
+        let scope = persona_scope(&f)?;
+        let user_matches = match &scope.user_id {
+            crate::domain::models::scope::UserFilter::Any => true,
+            crate::domain::models::scope::UserFilter::AppOnly => {
+                entity["user_id"].as_str().is_none_or(str::is_empty)
+            }
+            crate::domain::models::scope::UserFilter::User(user) => entity["user_id"] == *user,
+        };
+        if entity["workspace_id"]
+            != crate::domain::services::memories::normalize(&scope.workspace_id)
+            || scope
+                .app_id
+                .as_ref()
+                .is_some_and(|app| entity["app_id"] != *app)
+            || !user_matches
+        {
+            return Err(Error::not_found("entity", &id));
+        }
+        if persona {
+            let entities = crate::domain::services::personas::list(&s.service.store, scope).await?;
+            return Ok(data(
+                entities
+                    .into_iter()
+                    .find(|p| p["id"] == id)
+                    .ok_or_else(|| Error::not_found("entity", &id))?,
+            ));
+        }
+    }
+    Ok(out(entity, Table::Entity))
 }
 
 async fn graph(
@@ -663,5 +697,58 @@ async fn delete_memories(
             request
         )
         .await?
+    )))
+}
+
+fn persona_scope(
+    f: &crate::domain::services::memories::Filters,
+) -> Result<crate::domain::models::scope::ReadScope, Error> {
+    serde_json::from_value(serde_json::to_value(f).expect("query values"))
+        .map_err(|_| Error::invalid("workspace_id is required"))
+}
+async fn list_personas(
+    State(s): State<AppState>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    let mut values =
+        crate::domain::services::personas::list(&s.service.store, persona_scope(&f)?).await?;
+    if let Some(q) = f.get("q") {
+        values.retain(|v| {
+            v["canonical_name"]
+                .as_str()
+                .unwrap()
+                .to_lowercase()
+                .contains(&q.to_lowercase())
+        });
+    }
+    if let Some(kind) = f.get("type") {
+        values.retain(|v| v["entity_type"] == *kind);
+    }
+    Ok(data(json!(values)))
+}
+async fn create_persona(
+    State(s): State<AppState>,
+    ApiJson(r): ApiJson<crate::domain::models::personas::PersonaCreate>,
+) -> Result<(StatusCode, Json<Value>), Error> {
+    Ok((
+        StatusCode::CREATED,
+        data(crate::domain::services::personas::create(&s.service.store, r).await?),
+    ))
+}
+async fn update_persona(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    ApiJson(r): ApiJson<crate::domain::models::personas::PersonaUpdate>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::personas::update(&s.service.store, &id, r).await?,
+    ))
+}
+async fn match_personas(
+    State(s): State<AppState>,
+    ApiJson(r): ApiJson<crate::domain::models::personas::PersonaMatch>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(json!(
+        crate::domain::services::personas::matches(&s.service.store, r).await?
     )))
 }
