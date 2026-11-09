@@ -32,6 +32,47 @@
 
 - Merge #15 preserve forgotten memory list filters
 
+- Merge #16 port workers CLI consolidation and Scalar docs
+
+
+### Features
+
+- Port workers CLI consolidation and Scalar docs (#16)
+
+- Migrate the isolated v1 memory copy (#19)
+
+
+## Unreleased
+
+
+### Chores
+
+- Merge v1.0.0 back to release
+
+- Merge v1.0.0 back to development
+
+- Merge v1.0.0 back to feature/main
+
+- Add Rust project skeleton (#13)
+
+- Merge #13 add Rust project skeleton
+
+- Map the complete v1 behavior (#14)
+
+- Merge #14 map the complete v1 behavior
+
+- Add forced memory scope columns (#18)
+
+- Merge #18 add forced memory scope columns
+
+- Port the unchanged memory API to Rust (#15)
+
+- Merge #15 port the unchanged memory API to Rust
+
+- Preserve forgotten memory list filters (#15)
+
+- Merge #15 preserve forgotten memory list filters
+
 
 ### Features
 
