@@ -94,3 +94,18 @@ hippocampus recall "What did we decide about the mapper?"
 ## Status
 
 MVP scope tracked in issue #1. Full architecture/domain specification lives locally in `docs/` (untracked, per working rules).
+
+## Rust development
+
+The Rust app uses an isolated test database before cutover. It does not open the v1 production database.
+
+- Use the `hippocampus_dev` Git worktree.
+- Set `HIPPOCAMPUS_TEST_DATABASE_URL` in the shared, ignored `.env` file.
+- The database name must be `hippocampus_v2_test`.
+- Run `cargo run --bin migrate_test` after restoring the v1 backup to the test database.
+- Run `scripts/app_dev_run.sh`. The test API listens on `127.0.0.1:18001`.
+- Run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test`.
+
+The graph image formats require Graphviz (`dot`). JSON, D2, and Mermaid output need no external renderer.
+The Rust graph renderer preserves node types and edges. Image coordinates can differ from the Python renderer.
+All behavior settings are in `src/core/config.rs`. Keep private connection values in `.env`.
