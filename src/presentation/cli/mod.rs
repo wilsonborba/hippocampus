@@ -479,6 +479,11 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
             println!("Database upgraded to head.");
         }
         Command::Admin { command } => {
+            let kind = match &command {
+                AdminCommand::Expire => "expire",
+                AdminCommand::SyncDocuments { .. } => "sync-documents",
+                AdminCommand::Reconcile { .. } => "reconcile",
+            };
             let value = match command {
                 AdminCommand::Expire => json!(
                     workers::expire(
@@ -500,7 +505,11 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                     .await?
                 ),
             };
-            emit(&value, json_output, None);
+            if json_output {
+                emit(&value, true, None);
+            } else if let Some(text) = maintenance_text(kind, &value) {
+                println!("{text}");
+            }
         }
         Command::Consolidate(args) => {
             if args.tag.is_none() && args.kind.is_none() {
@@ -608,5 +617,47 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
 impl Cli {
     pub fn verbose(&self) -> bool {
         self.verbose
+    }
+}
+
+fn maintenance_text(kind: &str, value: &Value) -> Option<String> {
+    match kind {
+        "reconcile" => Some(format!(
+            "missing_document: {}\nmissing_embedding: {}",
+            value["missing_document"].as_array().map_or(0, Vec::len),
+            value["missing_embedding"].as_array().map_or(0, Vec::len)
+        )),
+        "sync-documents" => Some(
+            ["processed", "synced", "skipped_no_document", "failed"]
+                .into_iter()
+                .map(|key| format!("{key}: {}", value[key]))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+        _ => None,
+    }
+}
+#[cfg(test)]
+mod output_tests {
+    use super::*;
+    #[test]
+    fn interactive_maintenance_reports_remain_visible() {
+        assert_eq!(
+            maintenance_text(
+                "reconcile",
+                &json!({"missing_document":["a"],"missing_embedding":[]})
+            )
+            .unwrap(),
+            "missing_document: 1\nmissing_embedding: 0"
+        );
+        assert!(
+            maintenance_text(
+                "sync-documents",
+                &json!({"processed":1,"synced":1,"skipped_no_document":0,"failed":0})
+            )
+            .unwrap()
+            .contains("synced: 1")
+        );
+        assert!(maintenance_text("expire", &json!({"expired_memory_ids":[]})).is_none());
     }
 }
