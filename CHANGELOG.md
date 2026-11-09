@@ -49,6 +49,8 @@
 
 - Merge #21 unified-search
 
+- Merge #22 scoped-graph
+
 
 ### Features
 
@@ -63,6 +65,8 @@
 - Unified-search (#21)
 
 - Scoped-graph (#22)
+
+- Bulk-delete (#23)
 
 
 ## v1.0.0 - 2026-11-09

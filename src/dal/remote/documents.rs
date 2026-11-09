@@ -4,12 +4,16 @@ use tokio::sync::RwLock;
 
 #[derive(Clone, Default)]
 pub struct Documents {
+    delete_unavailable: bool,
     fallback: Arc<RwLock<HashMap<String, Value>>>,
     couch: Option<(reqwest::Client, String, String, String)>,
 }
 impl Documents {
     pub async fn from_environment() -> Self {
-        let mut result = Self::default();
+        let mut result = Self {
+            delete_unavailable: true,
+            ..Self::default()
+        };
         if let (Ok(url), Ok(user), Ok(password)) = (
             std::env::var("HIPPOCAMPUS_COUCHDB_URL"),
             std::env::var("HIPPOCAMPUS_COUCHDB_USERNAME"),
@@ -32,6 +36,7 @@ impl Documents {
                 .is_ok_and(|r| r.status().is_success())
             {
                 result.couch = Some((client, base, user, password));
+                result.delete_unavailable = false;
             }
         }
         result
@@ -51,6 +56,46 @@ impl Documents {
                 .ok()
         } else {
             self.fallback.read().await.get(id).cloned()
+        }
+    }
+    pub async fn delete(&self, id: &str) -> bool {
+        if self.delete_unavailable {
+            return false;
+        }
+        if let Some((client, base, user, password)) = &self.couch {
+            let url = format!("{base}/memory:{id}");
+            let Ok(response) = client
+                .get(&url)
+                .basic_auth(user, Some(password))
+                .send()
+                .await
+            else {
+                return false;
+            };
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return true;
+            }
+            if !response.status().is_success() {
+                return false;
+            }
+            let Ok(document) = response.json::<Value>().await else {
+                return false;
+            };
+            let Some(revision) = document["_rev"].as_str() else {
+                return false;
+            };
+            client
+                .delete(url)
+                .query(&[("rev", revision)])
+                .basic_auth(user, Some(password))
+                .send()
+                .await
+                .is_ok_and(|r| {
+                    r.status().is_success() || r.status() == reqwest::StatusCode::NOT_FOUND
+                })
+        } else {
+            self.fallback.write().await.remove(id);
+            true
         }
     }
     pub async fn available(&self) -> bool {

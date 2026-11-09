@@ -2216,6 +2216,33 @@
           }
         }
       }
+    },
+    "/api/v1/memories/delete": {
+      "post": {
+        "summary": "Delete scoped memories and unused files",
+        "description": "All existing ids must match the exact scope. Missing ids are ignored. Remote file deletion is idempotent. An external failure rolls back PostgreSQL, so the caller can retry without a retry table.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data is the list of removed ids."
+          },
+          "403": {
+            "description": "An existing id is outside the scope."
+          },
+          "502": {
+            "description": "An external store failed. Retry the same request."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3905,6 +3932,40 @@
         },
         "required": [
           "workspace_id"
+        ]
+      },
+      "DeleteRequest": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "app_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memory_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "workspace_id",
+          "app_id",
+          "memory_ids"
         ]
       }
     }

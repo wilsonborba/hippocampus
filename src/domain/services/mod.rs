@@ -1,4 +1,5 @@
 pub mod consolidation;
+pub mod deletion;
 pub mod files;
 pub mod graph;
 pub mod memories;
