@@ -47,6 +47,8 @@
 
 - Merge #20 store files and their extracted text through FSM
 
+- Merge #21 unified-search
+
 
 ### Features
 
@@ -59,6 +61,8 @@
 - Store files and their extracted text through FSM (#20)
 
 - Unified-search (#21)
+
+- Scoped-graph (#22)
 
 
 ## v1.0.0 - 2026-11-09

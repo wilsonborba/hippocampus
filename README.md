@@ -160,3 +160,22 @@ array. Historical search adds superseded memories, not deleted ones.
 The Rust CLI restores `search` and `recall` with a required `--workspace`.
 Both use the same new ranking. Recall no longer returns the removed v1
 weighted signals. The v1 examples above do not define the Rust search API.
+
+### Scoped graph and names
+
+`GET /api/v1/graph` returns nodes and edges for active memories in a scope.
+`GET /api/v1/graph/nodes/{node_id}` returns that node and its scoped context.
+Both require `workspace_id`. Optional `app_id` and `user_id` have the search
+scope rules. Empty query `user_id` selects A2A. Limit bounds the returned
+memories (default 300). Depth is 0 to 2 (default 2). Whole graph seeds are
+the scoped list in stable id order. Node context starts with memories
+linked to that node and follows relationships up to depth and limit.
+
+Node ids are a memory id, `tag:id`, `entity:id`, or `resource:id`.
+File resources use node type `file`. Names and edges come only from scoped
+memories. An absent or private node returns 404. A shared tag never adds
+another user's memory or entity.
+
+`GET /api/v1/tags/search` and `GET /api/v1/entities/search` require the same
+scope. They keep `q` and `limit` (default 20) from v1. Only names linked to
+active memories in that scope are returned.
