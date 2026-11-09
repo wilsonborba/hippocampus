@@ -1970,6 +1970,252 @@
           }
         }
       }
+    },
+    "/api/v1/graph": {
+      "get": {
+        "summary": "Whole scope graph",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped data in the standard data envelope."
+          },
+          "400": {
+            "description": "Missing scope or invalid bound."
+          },
+          "404": {
+            "description": "Node outside scope or absent."
+          }
+        }
+      }
+    },
+    "/api/v1/graph/nodes/{node_id}": {
+      "get": {
+        "summary": "Scoped node context",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 2
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped data in the standard data envelope."
+          },
+          "400": {
+            "description": "Missing scope or invalid bound."
+          },
+          "404": {
+            "description": "Node outside scope or absent."
+          }
+        }
+      }
+    },
+    "/api/v1/tags/search": {
+      "get": {
+        "summary": "Scoped tag search",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped data in the standard data envelope."
+          },
+          "400": {
+            "description": "Missing scope or invalid bound."
+          },
+          "404": {
+            "description": "Node outside scope or absent."
+          }
+        }
+      }
+    },
+    "/api/v1/entities/search": {
+      "get": {
+        "summary": "Scoped entity search",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped data in the standard data envelope."
+          },
+          "400": {
+            "description": "Missing scope or invalid bound."
+          },
+          "404": {
+            "description": "Node outside scope or absent."
+          }
+        }
+      }
     }
   },
   "components": {

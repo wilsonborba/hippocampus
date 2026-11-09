@@ -40,6 +40,10 @@ fn outs(values: Vec<Value>, table: Table) -> Json<Value> {
 pub fn router(state: AppState) -> Router {
     let private = Router::new()
         .route("/api/v1/search", post(search))
+        .route("/api/v1/graph", get(scope_graph))
+        .route("/api/v1/graph/nodes/{id}", get(node_context))
+        .route("/api/v1/tags/search", get(search_tags))
+        .route("/api/v1/entities/search", get(search_entities))
         .route("/api/v1/consolidation", post(consolidate))
         .route("/api/v1/files", post(upload_file))
         .route(
@@ -609,5 +613,39 @@ async fn search(
             request,
         )
         .await?,
+    ))
+}
+
+async fn scope_graph(
+    State(s): State<AppState>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::scoped_graph::graph(&s.service.store, &f, None).await?,
+    ))
+}
+async fn node_context(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::scoped_graph::graph(&s.service.store, &f, Some(&id)).await?,
+    ))
+}
+async fn search_tags(
+    State(s): State<AppState>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::scoped_graph::names(&s.service.store, &f, Table::Tag).await?,
+    ))
+}
+async fn search_entities(
+    State(s): State<AppState>,
+    ApiQuery(f): ApiQuery,
+) -> Result<Json<Value>, Error> {
+    Ok(data(
+        crate::domain::services::scoped_graph::names(&s.service.store, &f, Table::Entity).await?,
     ))
 }
