@@ -1,0 +1,964 @@
+{
+  "ConsolidationRequest": [
+    {
+      "name": "memory_ids",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Memory Ids"
+      }
+    },
+    {
+      "name": "filters",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ConsolidationFilters"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mode",
+      "required": false,
+      "schema": {
+        "type": "string",
+        "enum": [
+          "analyze",
+          "apply_safe"
+        ],
+        "title": "Mode",
+        "default": "analyze"
+      }
+    }
+  ],
+  "CorrectRequest": [
+    {
+      "name": "new_memory_id",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "New Memory Id"
+      }
+    }
+  ],
+  "EntityAssociateRequest": [
+    {
+      "name": "entity_type",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Entity Type"
+      }
+    },
+    {
+      "name": "canonical_name",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Canonical Name"
+      }
+    },
+    {
+      "name": "role",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Role"
+      }
+    },
+    {
+      "name": "source",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source"
+      }
+    },
+    {
+      "name": "confidence",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confidence"
+      }
+    }
+  ],
+  "ForgetRequest": [
+    {
+      "name": "reason",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reason"
+      }
+    }
+  ],
+  "MemoryCreateRequest": [
+    {
+      "name": "content",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Content"
+      }
+    },
+    {
+      "name": "workspace_id",
+      "required": false,
+      "schema": {
+        "type": "string",
+        "title": "Workspace Id",
+        "default": "default"
+      }
+    },
+    {
+      "name": "memory_type",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Memory Type"
+      }
+    },
+    {
+      "name": "title",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    {
+      "name": "summary",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Summary"
+      }
+    },
+    {
+      "name": "importance",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Importance"
+      }
+    },
+    {
+      "name": "confidence",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confidence"
+      }
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Tags"
+      }
+    },
+    {
+      "name": "entities",
+      "required": false,
+      "schema": {
+        "items": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "type": "array",
+        "title": "Entities"
+      }
+    },
+    {
+      "name": "resources",
+      "required": false,
+      "schema": {
+        "items": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "type": "array",
+        "title": "Resources"
+      }
+    },
+    {
+      "name": "context",
+      "required": false,
+      "schema": {
+        "additionalProperties": true,
+        "type": "object",
+        "title": "Context"
+      }
+    },
+    {
+      "name": "observed_at",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Observed At"
+      }
+    },
+    {
+      "name": "valid_from",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Valid From"
+      }
+    },
+    {
+      "name": "valid_until",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Valid Until"
+      }
+    },
+    {
+      "name": "expires_at",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expires At"
+      }
+    },
+    {
+      "name": "metadata",
+      "required": false,
+      "schema": {
+        "additionalProperties": true,
+        "type": "object",
+        "title": "Metadata"
+      }
+    },
+    {
+      "name": "app_id",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "user_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  ],
+  "MemoryUpdateRequest": [
+    {
+      "name": "title",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    {
+      "name": "summary",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Summary"
+      }
+    },
+    {
+      "name": "importance",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Importance"
+      }
+    },
+    {
+      "name": "confidence",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confidence"
+      }
+    },
+    {
+      "name": "valid_from",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Valid From"
+      }
+    },
+    {
+      "name": "valid_until",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Valid Until"
+      }
+    },
+    {
+      "name": "expires_at",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expires At"
+      }
+    },
+    {
+      "name": "metadata",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Metadata"
+      }
+    }
+  ],
+  "ReinforceRequest": [
+    {
+      "name": "source",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source"
+      }
+    },
+    {
+      "name": "reason",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reason"
+      }
+    }
+  ],
+  "RelationshipCreateRequest": [
+    {
+      "name": "target_memory_id",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Target Memory Id"
+      }
+    },
+    {
+      "name": "relation_type",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Relation Type"
+      }
+    },
+    {
+      "name": "confidence",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confidence"
+      }
+    },
+    {
+      "name": "source",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source"
+      }
+    }
+  ],
+  "ResourceLinkRequest": [
+    {
+      "name": "resource_type",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Resource Type"
+      }
+    },
+    {
+      "name": "source_system",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Source System"
+      }
+    },
+    {
+      "name": "external_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "External Id"
+      }
+    },
+    {
+      "name": "uri",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Uri"
+      }
+    },
+    {
+      "name": "relationship",
+      "required": false,
+      "schema": {
+        "type": "string",
+        "title": "Relationship",
+        "default": "references"
+      }
+    }
+  ],
+  "ResourceRegisterRequest": [
+    {
+      "name": "resource_type",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Resource Type"
+      }
+    },
+    {
+      "name": "source_system",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Source System"
+      }
+    },
+    {
+      "name": "external_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "External Id"
+      }
+    },
+    {
+      "name": "uri",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Uri"
+      }
+    },
+    {
+      "name": "title",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    {
+      "name": "content_type",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Content Type"
+      }
+    },
+    {
+      "name": "checksum",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Checksum"
+      }
+    },
+    {
+      "name": "size_bytes",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Size Bytes"
+      }
+    }
+  ],
+  "SearchRequest": [
+    {
+      "name": "text",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Text"
+      }
+    },
+    {
+      "name": "workspace_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Workspace Id"
+      }
+    },
+    {
+      "name": "memory_types",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Memory Types"
+      }
+    },
+    {
+      "name": "statuses",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Statuses"
+      }
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Tags"
+      }
+    },
+    {
+      "name": "tags_all",
+      "required": false,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Tags All"
+      }
+    },
+    {
+      "name": "entity_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Entity Id"
+      }
+    },
+    {
+      "name": "resource_id",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Resource Id"
+      }
+    },
+    {
+      "name": "created_after",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Created After"
+      }
+    },
+    {
+      "name": "created_before",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Created Before"
+      }
+    },
+    {
+      "name": "limit",
+      "required": false,
+      "schema": {
+        "type": "integer",
+        "title": "Limit",
+        "default": 20
+      }
+    },
+    {
+      "name": "cursor",
+      "required": false,
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Cursor"
+      }
+    }
+  ],
+  "SemanticSearchRequest": [
+    {
+      "name": "query",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "Query"
+      }
+    },
+    {
+      "name": "filters",
+      "required": false,
+      "schema": {
+        "additionalProperties": true,
+        "type": "object",
+        "title": "Filters"
+      }
+    },
+    {
+      "name": "limit",
+      "required": false,
+      "schema": {
+        "type": "integer",
+        "title": "Limit",
+        "default": 20
+      }
+    }
+  ],
+  "SupersedeRequest": [
+    {
+      "name": "new_memory_id",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "title": "New Memory Id"
+      }
+    }
+  ],
+  "TagRequest": [
+    {
+      "name": "tags",
+      "required": true,
+      "schema": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "Tags"
+      }
+    },
+    {
+      "name": "source",
+      "required": false,
+      "schema": {
+        "type": "string",
+        "title": "Source",
+        "default": "user"
+      }
+    }
+  ]
+}

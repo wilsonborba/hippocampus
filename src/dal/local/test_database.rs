@@ -12,7 +12,7 @@ pub async fn connect() -> Result<PgPool, Box<dyn std::error::Error>> {
         return Err("Only hippocampus_v2_test is allowed before cutover".into());
     }
     Ok(PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(crate::core::config::Config::default().database_connections)
         .connect_with(options)
         .await?)
 }
