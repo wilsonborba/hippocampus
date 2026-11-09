@@ -224,6 +224,24 @@
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "App filter."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Omit to search all users. An empty value selects A2A memory only."
           }
         ],
         "responses": {
@@ -298,6 +316,24 @@
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "App filter."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Omit to search all users. An empty value selects A2A memory only."
           }
         ],
         "responses": {
@@ -1458,6 +1494,24 @@
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "App filter."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Omit to search all users. An empty value selects A2A memory only."
           }
         ],
         "responses": {
@@ -1632,6 +1686,33 @@
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Workspace filter."
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "App filter."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Omit to search all users. An empty value selects A2A memory only."
           }
         ],
         "responses": {
@@ -1711,6 +1792,157 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Upload a file and its extracted text",
+        "operationId": "upload_file",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "workspace_id": {
+                    "type": "string"
+                  },
+                  "app_id": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Empty means A2A memory."
+                  },
+                  "extracted_text": {
+                    "type": "string",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "file",
+                  "workspace_id",
+                  "app_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileIdsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{resource_id}/content": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Download a file from FSM",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Workspace filter."
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "App filter."
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Omit to search all users. An empty value selects A2A memory only."
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw file bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -3309,6 +3541,36 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "FileIds": {
+        "type": "object",
+        "properties": {
+          "memory_id": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "memory_id",
+          "resource_id"
+        ]
+      },
+      "FileIdsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FileIds"
+          },
+          "pagination": {
+            "type": "null",
+            "default": null
+          }
+        },
+        "required": [
+          "data"
+        ]
       }
     }
   }

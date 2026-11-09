@@ -20,6 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or_default();
     let state = AppState {
+        filestore: std::sync::Arc::new(
+            hippocampus::dal::remote::files::FsmClient::from_environment(),
+        ),
         service: MemoryService {
             store: Store { pool },
         },

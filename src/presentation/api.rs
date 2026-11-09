@@ -19,6 +19,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct AppState {
+    pub filestore: Arc<dyn crate::domain::models::files::FileStore>,
     pub service: MemoryService,
     pub documents: Documents,
     pub api_keys: Arc<BTreeMap<String, String>>,
@@ -38,6 +39,11 @@ fn outs(values: Vec<Value>, table: Table) -> Json<Value> {
 pub fn router(state: AppState) -> Router {
     let private = Router::new()
         .route("/api/v1/consolidation", post(consolidate))
+        .route("/api/v1/files", post(upload_file))
+        .route(
+            "/api/v1/resources/{id}/content",
+            get(download_file).on(axum::routing::MethodFilter::HEAD, wrong_method),
+        )
         .route(
             "/api/v1/memories",
             get(list)
@@ -324,7 +330,18 @@ async fn register_resource(
 async fn read_resource(
     State(s): State<AppState>,
     Path(id): Path<String>,
+    ApiQuery(mut scope): ApiQuery,
 ) -> Result<Json<Value>, Error> {
+    if let Some(workspace) = scope.get_mut("workspace_id") {
+        *workspace = crate::domain::services::memories::normalize(workspace);
+    }
+    if ["workspace_id", "app_id", "user_id"]
+        .iter()
+        .any(|key| scope.contains_key(*key))
+        && !s.service.store.resource_in_scope(&id, &scope).await?
+    {
+        return Err(Error::not_found("resource", &id));
+    }
     Ok(out(
         s.service
             .store
@@ -478,4 +495,103 @@ async fn scalar_docs() -> axum::response::Html<&'static str> {
 }
 async fn openapi() -> Json<Value> {
     Json(serde_json::from_str(include_str!("openapi.json")).expect("OpenAPI contract"))
+}
+
+async fn upload_file(
+    State(s): State<AppState>,
+    multipart: Result<axum::extract::Multipart, axum::extract::multipart::MultipartRejection>,
+) -> Result<impl IntoResponse, Error> {
+    let mut multipart = multipart.map_err(|_| Error::invalid("A multipart form is required"))?;
+    let mut fields = std::collections::BTreeMap::new();
+    let mut file = None;
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| Error::invalid("The multipart form is not valid"))?
+    {
+        let name = field.name().unwrap_or("").to_owned();
+        if name == "file" {
+            let filename = field.file_name().unwrap_or("upload.bin").to_owned();
+            let content_type = field
+                .content_type()
+                .unwrap_or("application/octet-stream")
+                .to_owned();
+            file = Some((
+                filename,
+                content_type,
+                field
+                    .bytes()
+                    .await
+                    .map_err(|_| Error::invalid("The file body is not valid"))?
+                    .to_vec(),
+            ));
+        } else {
+            fields.insert(
+                name,
+                field
+                    .text()
+                    .await
+                    .map_err(|_| Error::invalid("The multipart form is not valid"))?,
+            );
+        }
+    }
+    let required = |key: &str| {
+        fields
+            .get(key)
+            .cloned()
+            .ok_or_else(|| Error::invalid(format!("{key} is required")))
+    };
+    let (filename, content_type, bytes) = file.ok_or_else(|| Error::invalid("file is required"))?;
+    let scope = crate::domain::models::scope::WriteScope {
+        workspace_id: required("workspace_id")?,
+        app_id: required("app_id")?,
+        user_id: fields.get("user_id").cloned().filter(|s| !s.is_empty()),
+    };
+    let upload = crate::domain::models::files::FileUpload {
+        scope,
+        filename,
+        content_type,
+        bytes,
+        extracted_text: fields.get("extracted_text").cloned().unwrap_or_default(),
+    };
+    Ok((
+        StatusCode::CREATED,
+        data(json!(
+            s.service.upload_file(upload, s.filestore.as_ref()).await?
+        )),
+    ))
+}
+async fn download_file(
+    State(s): State<AppState>,
+    Path(id): Path<String>,
+    ApiQuery(scope): ApiQuery,
+) -> Result<Response, Error> {
+    let file = s
+        .service
+        .download_file(&id, &scope, s.filestore.as_ref())
+        .await?;
+    let encoded = file
+        .filename
+        .as_bytes()
+        .iter()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || [b'.', b'_', b'-'].contains(b) {
+                (*b as char).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect::<String>();
+    let mut response = axum::body::Body::from(file.bytes).into_response();
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_str(&file.content_type)
+            .map_err(|_| Error::invalid("The file content type is not valid"))?,
+    );
+    response.headers_mut().insert(
+        header::CONTENT_DISPOSITION,
+        header::HeaderValue::from_str(&format!("attachment; filename*=UTF-8''{encoded}"))
+            .expect("encoded filename"),
+    );
+    Ok(response)
 }

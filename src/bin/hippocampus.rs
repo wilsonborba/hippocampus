@@ -23,6 +23,9 @@ async fn main() {
             .await
             .map_err(|_| "The test database connection failed".to_owned())?;
         let state = AppState {
+            filestore: std::sync::Arc::new(
+                hippocampus::dal::remote::files::FsmClient::from_environment(),
+            ),
             service: MemoryService {
                 store: Store { pool },
             },

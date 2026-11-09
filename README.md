@@ -128,3 +128,11 @@ It skips current vectors and refreshes vectors after canonical text changes. No 
 `hippocampus admin reembed --limit 50` runs a complete pass with batches of 50 memories.
 The scheduler checks this job every 60 seconds. A disabled provider does no storage or network work.
 Embedding tests use a double. They do not contact Pong or install a model.
+
+`POST /api/v1/files` accepts multipart fields `file`, `workspace_id`, `app_id`, `user_id`, and `extracted_text`.
+An empty or omitted `user_id` means A2A memory. Extracted text can be empty.
+The response contains `data.memory_id` and `data.resource_id`.
+FSM keeps raw bytes. PostgreSQL keeps the file memory and resource metadata. CouchDB receives no file bytes.
+`GET /api/v1/resources/{id}/content` returns the bytes. Scope query fields limit metadata and content reads.
+FSM upload completes before the PostgreSQL transaction. A database failure can leave an FSM object.
+Run `cargo test --test files -- --ignored` to check uploads and downloads with a local FSM double.

@@ -7,6 +7,8 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct Config {
     pub embedding: EmbeddingConfig,
+    pub filestore_app: String,
+    pub filestore_timeout: Duration,
     pub listen: SocketAddr,
     pub document_database: String,
     pub database_connections: u32,
@@ -35,6 +37,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             embedding: EmbeddingConfig::default(),
+            filestore_app: "hippocampus".into(),
+            filestore_timeout: Duration::from_secs(30),
             listen: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 18001),
             document_database: "hippocampus_v2_test".into(),
             database_connections: 5,
