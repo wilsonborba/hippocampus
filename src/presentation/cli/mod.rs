@@ -268,6 +268,29 @@ fn emit(value: &Value, json_output: bool, title: Option<&str>) {
         }
     }
 }
+fn emit_memories(value: &Value, memories: &[Value], json_output: bool, title: &str) {
+    if json_output {
+        emit(value, true, None);
+        return;
+    }
+    println!("{title}\nID | TYPE | STATUS | SUMMARY");
+    for memory in memories {
+        let summary = ["title", "summary", "content"]
+            .into_iter()
+            .filter_map(|key| memory[key].as_str())
+            .find(|s| !s.is_empty())
+            .unwrap_or("")
+            .chars()
+            .take(60)
+            .collect::<String>();
+        println!(
+            "{} | {} | {} | {summary}",
+            memory["id"].as_str().unwrap_or(""),
+            memory["memory_type"].as_str().unwrap_or(""),
+            memory["status"].as_str().unwrap_or("")
+        );
+    }
+}
 fn io_error(_: impl std::fmt::Display) -> Error {
     Error::invalid("The input or output operation failed")
 }
@@ -297,7 +320,17 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                     })
                     .collect(),
             );
-            emit(&output, json_output, Some("Search results"));
+            emit_memories(
+                &output,
+                &rows
+                    .as_array()
+                    .expect("search array")
+                    .iter()
+                    .map(|r| r["memory"].clone())
+                    .collect::<Vec<_>>(),
+                json_output,
+                "Search results",
+            );
         }
         Command::Recall(args) => {
             let request = serde_json::from_value(json!({"workspace_id": args.workspace, "text": args.query, "tags": args.tag.into_iter().collect::<Vec<_>>(), "historical": args.historical, "limit": args.limit})).expect("recall request");
@@ -332,10 +365,11 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                 }
                 let request:MemoryCreateRequest=serde_json::from_value(json!({"content":content,"memory_type":kind,"workspace_id":workspace,"app_id":config.cli_app_id,"title":title,"summary":summary,"importance":importance,"confidence":confidence,"tags":tags})).expect("CLI request");
                 let memory = service.create(request).await?;
-                emit(
+                emit_memories(
                     &pick(&memory, &["id", "workspace_id", "memory_type", "status"]),
+                    std::slice::from_ref(&memory),
                     json_output,
-                    Some("Memory created"),
+                    "Memory created",
                 );
             }
             MemoryCommand::Delete {
@@ -383,7 +417,7 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
             }
             MemoryCommand::Get(Id { memory_id }) => {
                 let memory = service.get(&memory_id, &Filters::new(), true).await?;
-                emit(
+                emit_memories(
                     &pick(
                         &memory,
                         &[
@@ -398,8 +432,9 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                             "confidence",
                         ],
                     ),
+                    std::slice::from_ref(&memory),
                     json_output,
-                    Some("Memory"),
+                    "Memory",
                 );
             }
             MemoryCommand::List(args) => {
@@ -415,14 +450,15 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                     }
                 }
                 let rows = service.list(&filters).await?;
-                emit(
+                emit_memories(
                     &json!(
                         rows.iter()
                             .map(|m| pick(m, &["id", "workspace_id", "memory_type", "status"]))
                             .collect::<Vec<_>>()
                     ),
+                    &rows,
                     json_output,
-                    Some("Memories"),
+                    "Memories",
                 );
             }
             MemoryCommand::Tag { memory_id, tags } => {
