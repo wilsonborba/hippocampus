@@ -121,3 +121,10 @@ Run `scripts/test_v1_parity.sh` for isolated HTTP and CLI contract checks.
 It needs the original checkout's Python environment and free ports 18001 and 28001.
 The v1 CLI fixture starts from its known model schema and revision. See issue #29 for the empty SQLite migration defect.
 Run `cargo test --test workers -- --ignored` for worker checks on the test database.
+
+Embedding settings are in `Config.embedding`. The default backend is `None`, and no model is selected.
+The owner supplies the model name before enabling Ollama. The worker scans all memories in batches.
+It skips current vectors and refreshes vectors after canonical text changes. No vector index is created.
+`hippocampus admin reembed --limit 50` runs a complete pass with batches of 50 memories.
+The scheduler checks this job every 60 seconds. A disabled provider does no storage or network work.
+Embedding tests use a double. They do not contact Pong or install a model.

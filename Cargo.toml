@@ -9,6 +9,7 @@ name = "hippocampus-api"
 path = "src/main.rs"
 
 [dependencies]
+sha2 = "0.10"
 clap = { version = "4", features = ["derive"] }
 axum = { version = "0.8", features = ["ws", "multipart"] }
 chrono = { version = "0.4", features = ["serde"] }

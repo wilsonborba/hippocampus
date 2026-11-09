@@ -6,6 +6,7 @@ use std::{
 /// Private values stay in .env. These settings are safe to commit.
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub embedding: EmbeddingConfig,
     pub listen: SocketAddr,
     pub document_database: String,
     pub database_connections: u32,
@@ -33,6 +34,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            embedding: EmbeddingConfig::default(),
             listen: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 18001),
             document_database: "hippocampus_v2_test".into(),
             database_connections: 5,
@@ -56,6 +58,33 @@ impl Default for Config {
             log_backups: 3,
             cors_max_age_seconds: 600,
             cors_allow_origins: vec!["*".into()],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EmbeddingBackend {
+    None,
+    Ollama,
+}
+#[derive(Debug, Clone)]
+pub struct EmbeddingConfig {
+    pub backend: EmbeddingBackend,
+    pub model: Option<String>,
+    pub base_url: String,
+    pub timeout: Duration,
+    pub batch_limit: i64,
+    pub interval: Duration,
+}
+impl Default for EmbeddingConfig {
+    fn default() -> Self {
+        Self {
+            backend: EmbeddingBackend::None,
+            model: None,
+            base_url: "http://192.168.1.104:11434".into(),
+            timeout: Duration::from_secs(30),
+            batch_limit: 50,
+            interval: Duration::from_secs(60),
         }
     }
 }

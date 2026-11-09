@@ -64,6 +64,10 @@ enum SchedulerCommand {
 }
 #[derive(Subcommand)]
 enum AdminCommand {
+    Reembed {
+        #[arg(long,default_value_t=Config::default().embedding.batch_limit)]
+        limit: i64,
+    },
     Reconcile {
         #[arg(long, conflicts_with = "apply")]
         dry_run: bool,
@@ -481,10 +485,20 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
         Command::Admin { command } => {
             let kind = match &command {
                 AdminCommand::Expire => "expire",
+                AdminCommand::Reembed { .. } => "reembed",
                 AdminCommand::SyncDocuments { .. } => "sync-documents",
                 AdminCommand::Reconcile { .. } => "reconcile",
             };
             let value = match command {
+                AdminCommand::Reembed { limit } => json!(
+                    crate::domain::tasks::embeddings::run(
+                        &service.store,
+                        crate::dal::remote::embeddings::configured(&config.embedding).as_ref(),
+                        limit,
+                        chrono::Utc::now()
+                    )
+                    .await?
+                ),
                 AdminCommand::Expire => json!(
                     workers::expire(
                         &service.store,
@@ -550,6 +564,7 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
             for (name, interval) in [
                 ("expire_memories", config.expiration_interval),
                 ("sync_documents", config.document_sync_interval),
+                ("generate_embeddings", config.embedding.interval),
                 ("reconcile", config.reconciliation_interval),
             ] {
                 let store = service.store.clone();
@@ -577,6 +592,16 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
                                         &store,
                                         &docs,
                                         cfg.document_batch_limit,
+                                    )
+                                    .await?;
+                                }
+                                "generate_embeddings" => {
+                                    crate::domain::tasks::embeddings::run(
+                                        &store,
+                                        crate::dal::remote::embeddings::configured(&cfg.embedding)
+                                            .as_ref(),
+                                        cfg.embedding.batch_limit,
+                                        chrono::Utc::now(),
                                     )
                                     .await?;
                                 }
@@ -627,6 +652,13 @@ fn maintenance_text(kind: &str, value: &Value) -> Option<String> {
             value["missing_document"].as_array().map_or(0, Vec::len),
             value["missing_embedding"].as_array().map_or(0, Vec::len)
         )),
+        "reembed" => Some(
+            ["processed", "embedded", "skipped_no_provider", "failed"]
+                .into_iter()
+                .map(|key| format!("{key}: {}", value[key]))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
         "sync-documents" => Some(
             ["processed", "synced", "skipped_no_document", "failed"]
                 .into_iter()

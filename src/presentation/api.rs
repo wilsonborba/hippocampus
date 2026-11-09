@@ -167,7 +167,7 @@ pub async fn ready(State(s): State<AppState>) -> Json<Value> {
         "unconfigured"
     };
     Json(
-        json!({"status":if pg{"ready"}else{"not_ready"},"dependencies":{"postgresql":if pg{"ok"}else{"unavailable"},"couchdb":couch,"filestore":if std::env::var("HIPPOCAMPUS_FILESTORE_URL").is_ok_and(|v| !v.is_empty()){"ok"}else{"unconfigured"},"embedding_provider":"none"}}),
+        json!({"status":if pg{"ready"}else{"not_ready"},"dependencies":{"postgresql":if pg{"ok"}else{"unavailable"},"couchdb":couch,"filestore":if std::env::var("HIPPOCAMPUS_FILESTORE_URL").is_ok_and(|v| !v.is_empty()){"ok"}else{"unconfigured"},"embedding_provider":if crate::dal::remote::embeddings::configured(&crate::core::config::Config::default().embedding).name()=="none"{"none"}else{"ollama"}}}),
     )
 }
 async fn create(
