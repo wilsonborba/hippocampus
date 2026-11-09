@@ -39,6 +39,8 @@ enum Command {
         #[command(subcommand)]
         command: MemoryCommand,
     },
+    Search(SearchArgs),
+    Recall(RecallArgs),
     Health,
     Db {
         #[command(subcommand)]
@@ -102,6 +104,30 @@ struct ListArgs {
     tag: Option<String>,
     #[arg(long, default_value_t = 20)]
     limit: i64,
+}
+#[derive(Args)]
+struct SearchArgs {
+    query: String,
+    #[arg(long)]
+    workspace: String,
+    #[arg(long = "type")]
+    kind: Option<String>,
+    #[arg(long)]
+    tag: Option<String>,
+    #[arg(long, default_value_t = 20)]
+    limit: usize,
+}
+#[derive(Args)]
+struct RecallArgs {
+    query: String,
+    #[arg(long)]
+    workspace: String,
+    #[arg(long)]
+    tag: Option<String>,
+    #[arg(long)]
+    historical: bool,
+    #[arg(long, default_value_t = 10)]
+    limit: usize,
 }
 #[derive(Args)]
 struct ConsolidateArgs {
@@ -238,6 +264,39 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
     let service = &state.service;
     let config = Config::default();
     match cli.command {
+        Command::Search(args) => {
+            let request = serde_json::from_value(json!({"workspace_id": args.workspace, "text": args.query, "tags": args.tag.into_iter().collect::<Vec<_>>(), "memory_types": args.kind.into_iter().collect::<Vec<_>>(), "limit": args.limit})).expect("search request");
+            let rows = crate::domain::services::search::search(
+                &service.store,
+                state.embedding.as_ref(),
+                request,
+            )
+            .await?;
+            let output = Value::Array(
+                rows.as_array()
+                    .expect("search array")
+                    .iter()
+                    .map(|r| {
+                        pick(
+                            &r["memory"],
+                            &["id", "workspace_id", "memory_type", "status"],
+                        )
+                    })
+                    .collect(),
+            );
+            emit(&output, json_output, Some("Search results"));
+        }
+        Command::Recall(args) => {
+            let request = serde_json::from_value(json!({"workspace_id": args.workspace, "text": args.query, "tags": args.tag.into_iter().collect::<Vec<_>>(), "historical": args.historical, "limit": args.limit})).expect("recall request");
+            let rows = crate::domain::services::search::search(
+                &service.store,
+                state.embedding.as_ref(),
+                request,
+            )
+            .await?;
+            let output = Value::Array(rows.as_array().expect("search array").iter().map(|r| json!({"id":r["memory"]["id"], "score":r["score"], "match_reasons":r["match_reasons"]})).collect());
+            emit(&output, json_output, Some("Recall results"));
+        }
         Command::Memory { command } => match command {
             MemoryCommand::Remember {
                 mut content,

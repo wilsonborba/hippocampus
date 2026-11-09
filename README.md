@@ -136,3 +136,27 @@ FSM keeps raw bytes. PostgreSQL keeps the file memory and resource metadata. Cou
 `GET /api/v1/resources/{id}/content` returns the bytes. Scope query fields limit metadata and content reads.
 FSM upload completes before the PostgreSQL transaction. A database failure can leave an FSM object.
 Run `cargo test --test files -- --ignored` to check uploads and downloads with a local FSM double.
+
+### Rust search
+
+`POST /api/v1/search` is the only Rust search route. Send `workspace_id`.
+Optional filters are `app_id`, `user_id`, `tags` (all match), `entity_ids`,
+`memory_types`, and `historical`. Omit `user_id` for all users, or send null
+for A2A. Cortex must always send its app and user filters.
+
+`text` uses PostgreSQL `simple` full-text terms with AND. The GIN document
+includes title, summary, content, tags and entities. Link and name changes
+refresh it. Thai word search is weak without spaces. With no text, the word
+list uses stable memory id order. Default limit is 20.
+
+When the configured embedding model returns a vector, all filtered vectors
+of that model are ranked by cosine distance. RRF uses k=60. With the model
+off or unavailable, only the word list is used. There is no vector index.
+Each result has `memory`, `score`, and `match_reasons` (word, semantic, or
+relationship). `expand` is 0 to 3, default 0. Expansion adds linked memories
+after the ranked limit and keeps all hard filters. No match returns an empty
+array. Historical search adds superseded memories, not deleted ones.
+
+The Rust CLI restores `search` and `recall` with a required `--workspace`.
+Both use the same new ranking. Recall no longer returns the removed v1
+weighted signals. The v1 examples above do not define the Rust search API.

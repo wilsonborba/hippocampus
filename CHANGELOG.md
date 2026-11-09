@@ -45,6 +45,8 @@
 
 - Merge #17 embed all memories through an optional provider
 
+- Merge #20 store files and their extracted text through FSM
+
 
 ### Features
 
@@ -55,6 +57,8 @@
 - Embed all memories through an optional provider (#17)
 
 - Store files and their extracted text through FSM (#20)
+
+- Unified-search (#21)
 
 
 ## v1.0.0 - 2026-11-09

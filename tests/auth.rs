@@ -17,6 +17,7 @@ async fn optional_bearer_contract() {
         .connect_lazy("postgres://localhost/hippocampus_v2_test")
         .unwrap();
     let state = AppState {
+        embedding: hippocampus::dal::remote::embeddings::configured(&Default::default()),
         filestore: std::sync::Arc::new(hippocampus::dal::remote::files::FsmClient::default()),
         service: MemoryService {
             store: Store { pool },

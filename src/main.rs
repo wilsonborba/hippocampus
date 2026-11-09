@@ -20,6 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or_default();
     let state = AppState {
+        embedding: hippocampus::dal::remote::embeddings::configured(&Default::default()),
         filestore: std::sync::Arc::new(
             hippocampus::dal::remote::files::FsmClient::from_environment(),
         ),
