@@ -354,3 +354,59 @@ impl Store {
         sqlx::query("SELECT 1").execute(&self.pool).await.is_ok()
     }
 }
+
+impl Store {
+    pub async fn embedded_ids(&self) -> Result<std::collections::HashSet<String>, Error> {
+        Ok(sqlx::query_scalar("SELECT memory_id FROM memory_embedding")
+            .fetch_all(&self.pool)
+            .await?
+            .into_iter()
+            .collect())
+    }
+}
+impl Store {
+    pub async fn consolidation_candidates(
+        &self,
+        filters: &crate::domain::models::api::ConsolidationFilters,
+    ) -> Result<Vec<Value>, Error> {
+        let mut query = QueryBuilder::<Postgres>::new(
+            "SELECT row_to_json(m) FROM memory m WHERE status='active'",
+        );
+        if let Some(workspace) = &filters.workspace_id {
+            query.push(" AND workspace_id=").push_bind(workspace);
+        }
+        if let Some(kind) = filters.memory_types.first() {
+            query.push(" AND memory_type=").push_bind(kind);
+        }
+        if !filters.tags.is_empty() {
+            query.push(" AND id IN (SELECT memory_id FROM memory_tag JOIN tag ON tag_id=tag.id WHERE canonical_name IN (");
+            let mut separated = query.separated(",");
+            for tag in &filters.tags {
+                separated.push_bind(tag);
+            }
+            query.push("))");
+        }
+        if let Some(after) = &filters.created_after {
+            query
+                .push(" AND created_at >= ")
+                .push_bind(after)
+                .push("::timestamptz");
+        }
+        if let Some(before) = &filters.created_before {
+            query
+                .push(" AND created_at <= ")
+                .push_bind(before)
+                .push("::timestamptz");
+        }
+        query
+            .push(" ORDER BY created_at DESC LIMIT ")
+            .push_bind(filters.limit);
+        Ok(query
+            .build_query_scalar::<Json<Value>>()
+            .fetch_all(&self.pool)
+            .await?
+            .into_iter()
+            .map(|v| v.0)
+            .collect())
+    }
+}

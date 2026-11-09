@@ -109,3 +109,15 @@ The Rust app uses an isolated test database before cutover. It does not open the
 The graph image formats require Graphviz (`dot`). JSON, D2, and Mermaid output need no external renderer.
 The Rust graph renderer preserves node types and edges. Image coordinates can differ from the Python renderer.
 All behavior settings are in `src/core/config.rs`. Keep private connection values in `.env`.
+
+Build the CLI with `cargo build --bin hippocampus`. Use `target/debug/hippocampus --help` for commands.
+The CLI writes A2A memories with app id `hippocampus`. It uses the same test database guard as the API.
+The scheduler runs in the foreground with `hippocampus scheduler run`. It stops on SIGINT or SIGTERM.
+Expiration runs every 300 seconds. Document sync runs every 120 seconds. Reconciliation runs every 1800 seconds.
+The embedding job has its own area contract. The scheduler does not run consolidation automatically.
+Logs rotate at 5 MB, with three backup files. CLI logs go to stderr and preserve JSON stdout.
+
+Run `scripts/test_v1_parity.sh` for isolated HTTP and CLI contract checks.
+It needs the original checkout's Python environment and free ports 18001 and 28001.
+The v1 CLI fixture starts from its known model schema and revision. See issue #29 for the empty SQLite migration defect.
+Run `cargo test --test workers -- --ignored` for worker checks on the test database.

@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, sync::Arc};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    tracing_subscriber::fmt().init();
+    hippocampus::core::logs::init(false, false)?;
     let config = Config::default();
     let pool = test_database::connect().await?;
     let keys = std::env::var("HIPPOCAMPUS_API_KEYS")
