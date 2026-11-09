@@ -200,3 +200,22 @@ There is no background retry or retry table. The caller retries the request.
 The CLI keeps `memory delete ID --hard --yes`, with required `--workspace`,
 optional `--app` (default hippocampus), and optional `--user` (default A2A).
 `memory forget` remains the logical operation.
+
+### Scoped personas
+
+Personas are entities of type `person` or `bot`. `POST /api/v1/entities`
+accepts the write scope, `entity_type`, `canonical_name`, `aliases`, and
+`is_self`. `PATCH /api/v1/entities/{id}` accepts the exact write scope and
+changed name, aliases or is_self. `GET /api/v1/entities` lists personas in a
+required read scope, with optional `q` and `type`. Reading one persona also
+requires a read scope. Existing non-persona entity reads stay compatible.
+
+`POST /api/v1/entities/match` accepts a required read scope and `text`.
+It matches normalized Unicode words in names and aliases. It does not match
+part of a word and makes no LLM call. Each scope has its own names and aliases.
+`is_self` is unique per user and app across workspaces. A2A has at most one
+per workspace and app. Another scope cannot change a persona.
+
+Migration 0004 splits old shared entities by the scopes of their linked
+memories. It preserves aliases and links. Unlinked old entities use workspace
+default, app legacy, and no user. Only the test copy runs this migration now.

@@ -1592,6 +1592,40 @@
             }
           }
         }
+      },
+      "patch": {
+        "summary": "Change a scoped persona",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaUpdate"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Changed persona."
+          },
+          "404": {
+            "description": "Absent or outside the scope."
+          },
+          "409": {
+            "description": "Scoped name or is_self conflict."
+          }
+        }
       }
     },
     "/api/v1/resources": {
@@ -2240,6 +2274,97 @@
           },
           "502": {
             "description": "An external store failed. Retry the same request."
+          }
+        }
+      }
+    },
+    "/api/v1/entities": {
+      "post": {
+        "summary": "Create a scoped persona",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Persona entity and aliases."
+          },
+          "409": {
+            "description": "Scoped name or is_self conflict."
+          }
+        }
+      },
+      "get": {
+        "summary": "List scoped personas",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped personas."
+          }
+        }
+      }
+    },
+    "/api/v1/entities/match": {
+      "post": {
+        "summary": "Match names and aliases by Unicode words",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaMatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matched scoped personas."
           }
         }
       }
@@ -3966,6 +4091,113 @@
           "workspace_id",
           "app_id",
           "memory_ids"
+        ]
+      },
+      "PersonaCreate": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "canonical_name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_self": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "app_id",
+          "entity_type",
+          "canonical_name"
+        ]
+      },
+      "PersonaUpdate": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canonical_name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_self": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "app_id"
+        ]
+      },
+      "PersonaMatch": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "text"
         ]
       }
     }
