@@ -11,7 +11,24 @@ use crate::domain::{
     services::personas::normalize,
 };
 use serde_json::{Value, json};
-use sqlx::{Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder, Transaction};
+pub struct PersonaWrite {
+    tx: Transaction<'static, Postgres>,
+    pub id: String,
+}
+impl PersonaWrite {
+    pub async fn document(&mut self) -> Result<(), Error> {
+        sqlx::query("UPDATE entity SET document_store='couchdb',document_id=id WHERE id=$1")
+            .bind(&self.id)
+            .execute(&mut *self.tx)
+            .await?;
+        Ok(())
+    }
+    pub async fn commit(self) -> Result<String, Error> {
+        self.tx.commit().await?;
+        Ok(self.id)
+    }
+}
 fn failure(e: sqlx::Error) -> Error {
     if e.as_database_error()
         .is_some_and(|d| d.is_unique_violation())
@@ -58,7 +75,7 @@ impl Store {
         }
         Ok(out)
     }
-    pub async fn create_persona(&self, r: &PersonaCreate) -> Result<Value, Error> {
+    pub async fn create_persona(&self, r: &PersonaCreate) -> Result<PersonaWrite, Error> {
         let id = id();
         let mut tx = self.pool.begin().await?;
         let user = r.scope.user_id.as_deref().filter(|s| !s.is_empty());
@@ -66,14 +83,10 @@ impl Store {
         for alias in &r.aliases {
             sqlx::query("INSERT INTO entity_alias(id,entity_id,alias,normalized_alias,created_at) VALUES ($1,$2,$3,$4,now()) ON CONFLICT(entity_id,normalized_alias) DO NOTHING").bind(super::store::id()).bind(&id).bind(alias.trim()).bind(normalize(alias)).execute(&mut *tx).await?;
         }
-        tx.commit().await?;
-        self.personas(&read_scope(&r.scope))
-            .await?
-            .into_iter()
-            .find(|v| v["id"] == id)
-            .ok_or_else(|| Error::not_found("entity", &id))
+        Ok(PersonaWrite { tx, id })
     }
-    pub async fn update_persona(&self, id: &str, r: &PersonaUpdate) -> Result<Value, Error> {
+
+    pub async fn update_persona(&self, id: &str, r: &PersonaUpdate) -> Result<PersonaWrite, Error> {
         let mut tx = self.pool.begin().await?;
         let current: Option<Value> =
             sqlx::query_scalar("SELECT row_to_json(e) FROM entity e WHERE id=$1 FOR UPDATE")
@@ -105,11 +118,65 @@ impl Store {
                 sqlx::query("INSERT INTO entity_alias(id,entity_id,alias,normalized_alias,created_at) VALUES ($1,$2,$3,$4,now()) ON CONFLICT(entity_id,normalized_alias) DO NOTHING").bind(super::store::id()).bind(id).bind(alias.trim()).bind(normalize(alias)).execute(&mut *tx).await?;
             }
         }
-        tx.commit().await?;
-        self.personas(&read_scope(&r.scope))
-            .await?
-            .into_iter()
-            .find(|v| v["id"] == id)
-            .ok_or_else(|| Error::not_found("entity", id))
+        Ok(PersonaWrite {
+            tx,
+            id: id.to_owned(),
+        })
+    }
+}
+
+pub struct PersonaDeletion {
+    tx: Transaction<'static, Postgres>,
+    pub document: bool,
+}
+impl PersonaDeletion {
+    pub async fn commit(self) -> Result<(), Error> {
+        self.tx.commit().await?;
+        Ok(())
+    }
+}
+impl Store {
+    pub async fn delete_persona(
+        &self,
+        id: &str,
+        scope: &WriteScope,
+    ) -> Result<PersonaDeletion, Error> {
+        let mut tx = self.pool.begin().await?;
+        let entity: Option<Value> =
+            sqlx::query_scalar("SELECT row_to_json(e) FROM entity e WHERE id=$1 FOR UPDATE")
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await?;
+        let Some(entity) = entity else {
+            return Ok(PersonaDeletion {
+                tx,
+                document: false,
+            });
+        };
+        if entity["workspace_id"]
+            != crate::domain::services::memories::normalize(&scope.workspace_id)
+            || entity["app_id"] != scope.app_id
+            || entity["user_id"].as_str().filter(|s| !s.is_empty())
+                != scope.user_id.as_deref().filter(|s| !s.is_empty())
+            || !matches!(entity["entity_type"].as_str(), Some("person" | "bot"))
+        {
+            return Err(Error::not_found("entity", id));
+        }
+        sqlx::query("DELETE FROM memory_entity WHERE entity_id=$1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("DELETE FROM entity_alias WHERE entity_id=$1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("DELETE FROM entity WHERE id=$1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        Ok(PersonaDeletion {
+            tx,
+            document: entity["document_store"] == "couchdb",
+        })
     }
 }

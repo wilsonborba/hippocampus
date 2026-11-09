@@ -219,3 +219,40 @@ per workspace and app. Another scope cannot change a persona.
 Migration 0004 splits old shared entities by the scopes of their linked
 memories. It preserves aliases and links. Unlinked old entities use workspace
 default, app legacy, and no user. Only the test copy runs this migration now.
+
+### Persona schemas and attribute documents
+
+The LAN schema routes are:
+
+- `POST /api/v1/persona-schemas`: save a draft with schema_name, version and fields.
+- `POST /api/v1/persona-schemas/{name}/versions/{version}/publish`: publish it.
+- `GET /api/v1/persona-schemas/{name}/versions/{version}`: read one version.
+- `GET /api/v1/persona-schemas/{name}`: read the latest published version.
+
+Schema names are person and bot. Each field has name, type, required and
+in_context. The guardrail follows the Reports pattern, including nested
+field paths. It rejects missing required fields, wrong types and unknown
+fields. Errors include each field_path. Published versions cannot change.
+No attribute field definitions are installed by default.
+
+Entity create and update accept `attributes`. The first attribute document
+uses the latest published schema for that persona type. Later attribute
+changes keep that document's schema version. A new schema version does not
+change old documents. A persona can have a name and aliases before it has
+attributes. The first attribute write requires a published schema.
+
+The CouchDB document has _id equal to the persona id, schema_name,
+schema_version and attributes. The entity has document_store and document_id
+links. Persona list, read and match return the saved attributes and version.
+Read a version's schema fields to select in_context fields for chat context.
+The runtime document client fails when the configured store is unavailable.
+The in-memory document store is a local test double.
+
+`DELETE /api/v1/entities/{id}` requires the exact write scope as query fields.
+It removes persona links and aliases, deletes the entity and its document,
+and leaves referenced memories intact. A missing id or document is safe.
+Document failure rolls back PostgreSQL. The caller can retry. There is no
+shared transaction between PostgreSQL and CouchDB. No background retry runs.
+
+All current migrations and document tests use hippocampus_v2_test. Production
+Hippocampus remains read-only until the approved cutover.

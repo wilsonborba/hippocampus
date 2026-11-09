@@ -15,14 +15,15 @@ async fn scope_self_alias_and_boundaries() {
     dotenvy::dotenv().ok();
     let pool = test_database::connect().await.unwrap();
     let store = Store { pool: pool.clone() };
+    let docs = hippocampus::dal::remote::documents::Documents::default();
     let w = format!("persona-{}", uuid::Uuid::new_v4().simple());
     let mut ids = vec![];
     for user in [Some("alice"), Some("bob"), None] {
-        let p = create(&store, req(&w, user, "Alice Smith", true))
+        let p = create(&store, &docs, req(&w, user, "Alice Smith", true))
             .await
             .unwrap();
         ids.push(p["id"].as_str().unwrap().to_owned());
-        let conflict = create(&store, req(&w, user, "Different", true))
+        let conflict = create(&store, &docs, req(&w, user, "Different", true))
             .await
             .err()
             .unwrap();
@@ -31,6 +32,7 @@ async fn scope_self_alias_and_boundaries() {
     assert!(
         create(
             &store,
+            &docs,
             req(&format!("{w}-other"), Some("alice"), "Different", true)
         )
         .await
@@ -38,28 +40,28 @@ async fn scope_self_alias_and_boundaries() {
     );
     let other_app=serde_json::from_value(json!({"workspace_id":w,"app_id":"other","user_id":"alice","entity_type":"bot","canonical_name":"Assistant","is_self":true})).unwrap();
     ids.push(
-        create(&store, other_app).await.unwrap()["id"]
+        create(&store, &docs, other_app).await.unwrap()["id"]
             .as_str()
             .unwrap()
             .into(),
     );
     for (i, user) in [Some("alice"), Some("bob"), None].into_iter().enumerate() {
         let r=serde_json::from_value(json!({"workspace_id":w,"app_id":"fixture","user_id":user,"text":"Ask ALLY, and Alice Smith."})).unwrap();
-        let found = matches(&store, r).await.unwrap();
+        let found = matches(&store, &docs, r).await.unwrap();
         assert_eq!(found.len(), 1);
         assert_eq!(found[0]["id"], ids[i]);
         let r=serde_json::from_value(json!({"workspace_id":w,"app_id":"fixture","user_id":user,"text":"Alliance and Alice Smithsonian"})).unwrap();
-        assert!(matches(&store, r).await.unwrap().is_empty());
+        assert!(matches(&store, &docs, r).await.unwrap().is_empty());
     }
     let all = serde_json::from_value(json!({"workspace_id":w})).unwrap();
-    assert_eq!(list(&store, all).await.unwrap().len(), 4);
+    assert_eq!(list(&store, &docs, all).await.unwrap().len(), 4);
     let wrong: PersonaUpdate = serde_json::from_value(
         json!({"workspace_id":w,"app_id":"fixture","user_id":"bob","canonical_name":"Changed"}),
     )
     .unwrap();
-    assert!(update(&store, &ids[0], wrong).await.is_err());
+    assert!(update(&store, &docs, &ids[0], wrong).await.is_err());
     let change=serde_json::from_value(json!({"workspace_id":w,"app_id":"fixture","user_id":"alice","canonical_name":"New Name","aliases":["Newest"],"is_self":false})).unwrap();
-    let changed = update(&store, &ids[0], change).await.unwrap();
+    let changed = update(&store, &docs, &ids[0], change).await.unwrap();
     assert_eq!(changed["canonical_name"], "New Name");
     assert_eq!(changed["aliases"], json!(["Newest"]));
     assert_eq!(changed["is_self"], false);
@@ -67,7 +69,7 @@ async fn scope_self_alias_and_boundaries() {
         json!({"workspace_id":w,"app_id":"fixture","user_id":"alice","text":"Newest!"}),
     )
     .unwrap();
-    assert_eq!(matches(&store, r).await.unwrap()[0]["id"], ids[0]);
+    assert_eq!(matches(&store, &docs, r).await.unwrap()[0]["id"], ids[0]);
     {
         use axum::{
             body::{Body, to_bytes},
