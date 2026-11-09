@@ -434,3 +434,98 @@ async fn graph_formats_and_validation() {
         );
     }
 }
+#[tokio::test]
+#[ignore = "requires isolated v1 on 28001 and v2 on 18001"]
+async fn consolidation_and_docs() {
+    for base in ["http://127.0.0.1:28001", "http://127.0.0.1:18001"] {
+        let c = Client::new();
+        let workspace = format!("consolidation-{}", uuid::Uuid::new_v4().simple());
+        let mut ids = vec![];
+        for text in ["same claim", " Same  Claim ", "different claim"] {
+            let memory=call(&c,base,"POST","/api/v1/memories",Some(json!({"app_id":"fixture","workspace_id":workspace,"memory_type":"decision","content":text,"entities":[{"entity_type":"project","canonical_name":workspace}]})),201).await;
+            ids.push(memory["data"]["id"].clone());
+        }
+        let report = call(
+            &c,
+            base,
+            "POST",
+            "/api/v1/consolidation",
+            Some(json!({"memory_ids":ids})),
+            200,
+        )
+        .await;
+        assert_eq!(
+            report["data"]["candidate_duplicates"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            report["data"]["candidate_contradictions"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert!(
+            report["data"]["applied_changes"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        let applied = call(
+            &c,
+            base,
+            "POST",
+            "/api/v1/consolidation",
+            Some(json!({"memory_ids":ids,"mode":"apply_safe"})),
+            200,
+        )
+        .await;
+        assert_eq!(
+            applied["data"]["applied_changes"].as_array().unwrap().len(),
+            1
+        );
+        let repeat = call(
+            &c,
+            base,
+            "POST",
+            "/api/v1/consolidation",
+            Some(json!({"memory_ids":ids,"mode":"apply_safe"})),
+            200,
+        )
+        .await;
+        assert!(
+            repeat["data"]["applied_changes"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            call(
+                &c,
+                base,
+                "POST",
+                "/api/v1/consolidation",
+                Some(json!({})),
+                400
+            )
+            .await["error"]["code"],
+            "invalid_request"
+        );
+        let api = call(&c, base, "GET", "/openapi.json", None, 200).await;
+        assert!(api["paths"]["/api/v1/consolidation"]["post"].is_object());
+        for path in ["/docs", "/docs/scalar"] {
+            let response = c.get(format!("{base}{path}")).send().await.unwrap();
+            assert_eq!(response.status().as_u16(), 200);
+            assert!(
+                response
+                    .text()
+                    .await
+                    .unwrap()
+                    .contains("@scalar/api-reference")
+            );
+        }
+    }
+}

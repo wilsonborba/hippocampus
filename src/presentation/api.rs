@@ -37,6 +37,7 @@ fn outs(values: Vec<Value>, table: Table) -> Json<Value> {
 
 pub fn router(state: AppState) -> Router {
     let private = Router::new()
+        .route("/api/v1/consolidation", post(consolidate))
         .route(
             "/api/v1/memories",
             get(list)
@@ -90,6 +91,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route_layer(middleware::from_fn_with_state(state.clone(), auth));
     Router::new()
+        .route(
+            "/docs",
+            get(scalar_docs).on(axum::routing::MethodFilter::HEAD, wrong_method),
+        )
+        .route(
+            "/docs/scalar",
+            get(scalar_docs).on(axum::routing::MethodFilter::HEAD, wrong_method),
+        )
+        .route("/openapi.json", get(openapi))
         .route(
             "/health",
             get(|| async { Json(json!({"status":"ok"})) })
@@ -145,7 +155,7 @@ fn constant_time_equal(a: &[u8], b: &[u8]) -> bool {
     }
     diff == 0
 }
-async fn ready(State(s): State<AppState>) -> Json<Value> {
+pub async fn ready(State(s): State<AppState>) -> Json<Value> {
     let pg = s.service.store.available().await;
     let couch = if std::env::var("HIPPOCAMPUS_COUCHDB_URL").is_ok_and(|v| !v.is_empty()) {
         if s.documents.available().await {
@@ -454,4 +464,18 @@ async fn cors(request: Request, next: Next) -> Response {
         }
     }
     response
+}
+
+async fn consolidate(
+    State(s): State<AppState>,
+    ApiJson(body): ApiJson<ConsolidationRequest>,
+) -> Result<Json<Value>, Error> {
+    Ok(data(s.service.consolidate(body).await?))
+}
+
+async fn scalar_docs() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("scalar.html"))
+}
+async fn openapi() -> Json<Value> {
+    Json(serde_json::from_str(include_str!("openapi.json")).expect("OpenAPI contract"))
 }

@@ -152,3 +152,33 @@ pub struct ResourceRegisterRequest {
     #[serde(default)]
     pub size_bytes: Option<i64>,
 }
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct ConsolidationRequest {
+    #[serde(default)]
+    pub memory_ids: Vec<String>,
+    pub filters: Option<ConsolidationFilters>,
+    #[serde(default)]
+    pub mode: ConsolidationMode,
+}
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ConsolidationMode {
+    #[default]
+    Analyze,
+    ApplySafe,
+}
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ConsolidationFilters {
+    pub workspace_id: Option<String>,
+    #[serde(default)]
+    pub memory_types: Vec<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub created_after: Option<String>,
+    pub created_before: Option<String>,
+    #[serde(default = "consolidation_limit")]
+    pub limit: i64,
+}
+fn consolidation_limit() -> i64 {
+    50
+}

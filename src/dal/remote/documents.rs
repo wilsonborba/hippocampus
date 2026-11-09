@@ -65,4 +65,27 @@ impl Documents {
             true
         }
     }
+
+    pub async fn put(&self, id: &str, mut document: Value) -> bool {
+        if let Some((client, base, user, password)) = &self.couch {
+            let url = format!("{base}/memory:{id}");
+            if let Some(existing) = self.get(id).await
+                && let Some(rev) = existing.get("_rev")
+            {
+                document["_rev"] = rev.clone();
+            }
+            document["_id"] = serde_json::json!(format!("memory:{id}"));
+            document["memory_id"] = serde_json::json!(id);
+            client
+                .put(url)
+                .basic_auth(user, Some(password))
+                .json(&document)
+                .send()
+                .await
+                .is_ok_and(|r| r.status().is_success())
+        } else {
+            self.fallback.write().await.insert(id.to_owned(), document);
+            true
+        }
+    }
 }

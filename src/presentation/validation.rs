@@ -91,6 +91,14 @@ impl<S: Send + Sync, T: DeserializeOwned> FromRequest<S> for ApiJson<T> {
 }
 static SHAPES: OnceLock<Value> = OnceLock::new();
 fn validate(value: &mut Value, schema: &Value, loc: Value, errors: &mut Vec<Value>) {
+    if let Some(reference) = schema["$ref"].as_str() {
+        static OPENAPI: OnceLock<Value> = OnceLock::new();
+        let api = OPENAPI
+            .get_or_init(|| serde_json::from_str(include_str!("openapi.json")).expect("OpenAPI"));
+        let name = reference.rsplit('/').next().expect("schema reference");
+        validate(value, &api["components"]["schemas"][name], loc, errors);
+        return;
+    }
     if let Some(options) = schema["anyOf"].as_array() {
         if value.is_null() && options.iter().any(|x| x["type"] == "null") {
             return;
@@ -135,6 +143,43 @@ fn validate(value: &mut Value, schema: &Value, loc: Value, errors: &mut Vec<Valu
         };
         errors.push(issue(error, loc, message, value.clone()));
         return;
+    }
+    if let Some(properties) = schema["properties"].as_object() {
+        let original = value.clone();
+        for (key, property) in properties {
+            let mut path = loc.as_array().expect("location").clone();
+            path.push(json!(key));
+            if let Some(child) = value.get_mut(key) {
+                validate(child, property, json!(path), errors);
+            } else if schema["required"]
+                .as_array()
+                .is_some_and(|r| r.iter().any(|v| v == key))
+            {
+                errors.push(issue(
+                    "missing",
+                    json!(path),
+                    "Field required",
+                    original.clone(),
+                ));
+            }
+        }
+    }
+    if let Some(allowed) = schema["enum"].as_array()
+        && !allowed.contains(value)
+    {
+        let expected = allowed
+            .iter()
+            .map(|v| format!("'{}'", v.as_str().unwrap_or("")))
+            .collect::<Vec<_>>()
+            .join(" or ");
+        let mut error = issue(
+            "literal_error",
+            loc.clone(),
+            &format!("Input should be {expected}"),
+            value.clone(),
+        );
+        error["ctx"] = json!({"expected":expected});
+        errors.push(error);
     }
     if let Some(values) = value.as_array_mut() {
         for (index, item) in values.iter_mut().enumerate() {
