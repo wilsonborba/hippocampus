@@ -8,7 +8,13 @@ use crate::{
 use serde_json::Value;
 use sqlx::{Postgres, QueryBuilder};
 fn filtered<'a>(r: &'a SearchRequest, prefix: &str) -> QueryBuilder<'a, Postgres> {
-    let mut q = QueryBuilder::new(format!("{prefix} FROM memory m WHERE workspace_id="));
+    let mut q = QueryBuilder::new(prefix.to_owned());
+    push_scope(&mut q, r);
+    q
+}
+/// `FROM memory m WHERE <scope and filters>` of a search request.
+pub(crate) fn push_scope<'a>(q: &mut QueryBuilder<'a, Postgres>, r: &'a SearchRequest) {
+    q.push(" FROM memory m WHERE workspace_id=");
     q.push_bind(normalize(&r.scope.workspace_id));
     if let Some(app) = &r.scope.app_id {
         q.push(" AND app_id=").push_bind(app);
@@ -39,7 +45,6 @@ fn filtered<'a>(r: &'a SearchRequest, prefix: &str) -> QueryBuilder<'a, Postgres
             .push_bind(&r.memory_types)
             .push(")");
     }
-    q
 }
 impl Store {
     pub async fn search_words(&self, r: &SearchRequest) -> Result<Vec<String>, Error> {

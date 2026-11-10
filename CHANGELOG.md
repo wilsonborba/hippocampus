@@ -14,6 +14,8 @@
 
 - Memory-json-columns (#34)
 
+- Scoped-names-sql (#33)
+
 
 ### Chores
 
@@ -66,6 +68,8 @@
 - Merge #30 cli-readable-summary
 
 - Merge #32 scoped-graph-depth
+
+- Merge #34 memory-json-columns
 
 
 ### Features
