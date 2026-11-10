@@ -205,34 +205,14 @@ pub async fn names(store: &Store, filters: &Filters, kind: Table) -> Result<Valu
         "limit",
         Config::default().list_default_limit as usize,
     )?;
-    let scoped = Scoped::load(store, filters).await?;
-    let rows = match kind {
-        Table::Tag => scoped.tags,
-        Table::Entity => scoped.entities,
-        _ => return Err(Error::invalid("Unsupported name kind")),
-    };
-    let needle = filters
-        .get("q")
-        .map(|s| s.to_lowercase())
-        .unwrap_or_default();
-    let values: BTreeMap<_, _> = rows
-        .into_iter()
-        .filter(|v| {
-            v["canonical_name"]
-                .as_str()
-                .unwrap()
-                .to_lowercase()
-                .contains(&needle)
-        })
-        .map(|v| {
-            (
-                (
-                    v["canonical_name"].as_str().unwrap().to_owned(),
-                    v["id"].as_str().unwrap().to_owned(),
-                ),
-                projection(&v, kind),
-            )
-        })
-        .collect();
-    Ok(Value::Array(values.into_values().take(limit).collect()))
+    let r = request(filters)?;
+    let needle = filters.get("q").map(String::as_str).unwrap_or_default();
+    Ok(Value::Array(
+        store
+            .scoped_names(&r, kind, needle, limit)
+            .await?
+            .iter()
+            .map(|v| projection(v, kind))
+            .collect(),
+    ))
 }

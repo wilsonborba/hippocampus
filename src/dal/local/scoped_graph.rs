@@ -23,4 +23,36 @@ impl Store {
             .fetch_all(&self.pool)
             .await?)
     }
+    /// Tag or entity names linked to a memory inside the scope (15.3), filtered,
+    /// ordered (byte order, like the earlier Rust sort) and limited in SQL. Loading
+    /// the whole scope graph was too slow (#33).
+    pub async fn scoped_names(
+        &self,
+        r: &crate::domain::models::search::SearchRequest,
+        table: Table,
+        needle: &str,
+        limit: usize,
+    ) -> Result<Vec<Value>, Error> {
+        let (rows, link, key) = match table {
+            Table::Tag => ("tag", "memory_tag", "tag_id"),
+            Table::Entity => ("entity", "memory_entity", "entity_id"),
+            _ => return Err(Error::invalid("Unsupported name kind")),
+        };
+        let mut q = sqlx::QueryBuilder::new(format!(
+            "SELECT row_to_json(x) FROM (SELECT DISTINCT ON (n.canonical_name COLLATE \"C\",n.id) n.* FROM {rows} n \
+             JOIN {link} l ON l.{key}=n.id WHERE l.memory_id IN (SELECT m.id"
+        ));
+        super::search::push_scope(&mut q, r);
+        q.push(") AND position(")
+            .push_bind(needle.to_lowercase())
+            .push(" in lower(n.canonical_name))>0 ORDER BY n.canonical_name COLLATE \"C\",n.id LIMIT ")
+            .push_bind(limit as i64)
+            .push(") x");
+        Ok(q.build_query_scalar::<sqlx::types::Json<Value>>()
+            .fetch_all(&self.pool)
+            .await?
+            .into_iter()
+            .map(|v| v.0)
+            .collect())
+    }
 }
