@@ -12,6 +12,8 @@
 
 - Scoped-graph-depth (#32)
 
+- Memory-json-columns (#34)
+
 
 ### Chores
 
@@ -62,6 +64,8 @@
 - Merge #25 persona-schemas
 
 - Merge #30 cli-readable-summary
+
+- Merge #32 scoped-graph-depth
 
 
 ### Features

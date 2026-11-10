@@ -38,6 +38,11 @@ impl Table {
         }
     }
 }
+/// JSON of one memory row without `search_document`. `row_to_json(m)` reads and
+/// converts that full-text column for every row (hippocampus#34). Add new memory
+/// columns here.
+pub const MEMORY_JSON: &str = "SELECT row_to_json((SELECT r FROM (SELECT m.id, m.memory_type, m.status, m.title, m.summary, m.content, m.importance, m.confidence, m.observed_at, m.valid_from, m.valid_until, m.expires_at, m.last_accessed_at, m.access_count, m.reinforcement_count, m.last_reinforced_at, m.document_store, m.document_id, m.metadata_json, m.deleted_at, m.created_at, m.updated_at, m.workspace_id, m.app_id, m.user_id) r))";
+
 impl Store {
     pub async fn get(&self, table: Table, id: &str) -> Result<Option<Value>, Error> {
         Ok(sqlx::query_scalar::<_, Json<Value>>(&format!(
@@ -169,7 +174,7 @@ impl Store {
         &self,
         filters: &std::collections::BTreeMap<String, String>,
     ) -> Result<Vec<Value>, Error> {
-        let mut q = QueryBuilder::<Postgres>::new("SELECT row_to_json(m) FROM memory m WHERE 1=1");
+        let mut q = QueryBuilder::<Postgres>::new(format!("{MEMORY_JSON} FROM memory m WHERE 1=1"));
         if !filters.contains_key("status") {
             q.push(" AND status NOT IN ('deleted','forgotten')");
         }
@@ -374,9 +379,9 @@ impl Store {
         &self,
         filters: &crate::domain::models::api::ConsolidationFilters,
     ) -> Result<Vec<Value>, Error> {
-        let mut query = QueryBuilder::<Postgres>::new(
-            "SELECT row_to_json(m) FROM memory m WHERE status='active'",
-        );
+        let mut query = QueryBuilder::<Postgres>::new(format!(
+            "{MEMORY_JSON} FROM memory m WHERE status='active'"
+        ));
         if let Some(workspace) = &filters.workspace_id {
             query.push(" AND workspace_id=").push_bind(workspace);
         }
