@@ -10,6 +10,8 @@
 
 - Cli-readable-summary (#30)
 
+- Scoped-graph-depth (#32)
+
 
 ### Chores
 
@@ -58,6 +60,8 @@
 - Merge #24 scoped-personas
 
 - Merge #25 persona-schemas
+
+- Merge #30 cli-readable-summary
 
 
 ### Features

@@ -278,3 +278,64 @@ async fn graph_and_names_require_scope_before_database_access() {
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }
+
+#[tokio::test]
+#[ignore = "requires hippocampus_v2_test; unique workspace only"]
+async fn scoped_depth_three_preserves_legacy_limit_and_user_boundary() {
+    dotenvy::dotenv().ok();
+    let config = hippocampus::core::config::Config::default();
+    assert_eq!(config.graph_max_depth, 2);
+    assert_eq!(config.scope_graph_max_depth, 3);
+    let pool = test_database::connect().await.unwrap();
+    let store = Store { pool: pool.clone() };
+    let service = MemoryService {
+        store: store.clone(),
+    };
+    let w = format!("depth-{}", uuid::Uuid::new_v4().simple());
+    let mut memories = vec![];
+    for i in 0..5 {
+        let request:MemoryCreateRequest=serde_json::from_value(json!({"workspace_id":w,"app_id":"fixture","user_id":if i==4 {"bob"}else{"alice"},"title":format!("node-{i}")})).unwrap();
+        memories.push(
+            service.create(request).await.unwrap()["id"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        );
+    }
+    for pair in memories.windows(2) {
+        service
+            .relationship(
+                &pair[0],
+                serde_json::from_value(
+                    json!({"target_memory_id":pair[1],"relation_type":"related_to"}),
+                )
+                .unwrap(),
+                true,
+            )
+            .await
+            .unwrap();
+    }
+    let mut f = filters(&w, Some("alice"));
+    f.insert("depth".into(), "2".into());
+    let two = graph(&store, &f, Some(&memories[0])).await.unwrap();
+    assert_eq!(ids(&two).len(), 3);
+    f.insert("depth".into(), "3".into());
+    let three = graph(&store, &f, Some(&memories[0])).await.unwrap();
+    assert_eq!(ids(&three).len(), 4);
+    assert!(ids(&three).contains(&memories[3].as_str()));
+    assert!(!ids(&three).contains(&memories[4].as_str()));
+    assert!(graph(&store, &f, None).await.is_ok());
+    f.insert("depth".into(), "4".into());
+    assert!(graph(&store, &f, None).await.is_err());
+    sqlx::query("DELETE FROM memory_relationship WHERE source_memory_id=ANY($1) OR target_memory_id=ANY($1)").bind(&memories).execute(&pool).await.unwrap();
+    sqlx::query("DELETE FROM memory_event WHERE memory_id=ANY($1)")
+        .bind(&memories)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM memory WHERE id=ANY($1)")
+        .bind(&memories)
+        .execute(&pool)
+        .await
+        .unwrap();
+}

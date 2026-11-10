@@ -93,10 +93,10 @@ pub async fn graph(store: &Store, filters: &Filters, root: Option<&str>) -> Resu
     let config = Config::default();
     let limit = number(filters, "limit", config.graph_default_max_nodes)?;
     let depth = number(filters, "depth", config.graph_max_depth)?;
-    if limit == 0 || depth > config.graph_max_depth {
+    if limit == 0 || depth > config.scope_graph_max_depth {
         return Err(Error::invalid(format!(
             "limit must be positive and depth must be 0 to {}",
-            config.graph_max_depth
+            config.scope_graph_max_depth
         )));
     }
     let scoped = Scoped::load(store, filters).await?;
