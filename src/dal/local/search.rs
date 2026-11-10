@@ -76,7 +76,7 @@ impl Store {
         r: &SearchRequest,
         ids: Option<&[String]>,
     ) -> Result<Vec<Value>, Error> {
-        let mut q = filtered(r, "SELECT row_to_json(m)");
+        let mut q = filtered(r, super::store::MEMORY_JSON);
         if let Some(ids) = ids {
             q.push(" AND id=ANY(").push_bind(ids).push(")");
         }
