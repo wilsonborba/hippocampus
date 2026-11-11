@@ -26,6 +26,8 @@ use std::{
     arg_required_else_help = true
 )]
 pub struct Cli {
+    #[arg(long, global = true)]
+    production: bool,
     #[arg(long = "json", global = true)]
     json: bool,
     #[arg(long, short = 'v', global = true)]
@@ -298,7 +300,11 @@ fn io_error(_: impl std::fmt::Display) -> Error {
 pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
     let json_output = cli.json || !io::stdout().is_terminal();
     let service = &state.service;
-    let config = Config::default();
+    let config = if cli.production {
+        Config::production()
+    } else {
+        Config::default()
+    };
     match cli.command {
         Command::Search(args) => {
             let request = serde_json::from_value(json!({"workspace_id": args.workspace, "text": args.query, "tags": args.tag.into_iter().collect::<Vec<_>>(), "memory_types": args.kind.into_iter().collect::<Vec<_>>(), "limit": args.limit})).expect("search request");
@@ -791,6 +797,9 @@ pub async fn execute(cli: Cli, state: AppState) -> Result<(), Error> {
 }
 
 impl Cli {
+    pub fn production(&self) -> bool {
+        self.production
+    }
     pub fn verbose(&self) -> bool {
         self.verbose
     }

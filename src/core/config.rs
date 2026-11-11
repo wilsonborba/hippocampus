@@ -35,6 +35,16 @@ pub struct Config {
     pub cors_max_age_seconds: u32,
     pub cors_allow_origins: Vec<String>,
 }
+impl Config {
+    pub fn production() -> Self {
+        Self {
+            listen: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8001),
+            document_database: "hippocampus_v2".into(),
+            ..Self::default()
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {

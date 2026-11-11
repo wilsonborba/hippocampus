@@ -19,7 +19,13 @@ impl Documents {
             ..Self::default()
         }
     }
+    pub fn persistent(&self) -> bool {
+        self.couch.is_some()
+    }
     pub async fn from_environment() -> Self {
+        Self::from_config(&crate::core::config::Config::default()).await
+    }
+    pub async fn from_config(config: &crate::core::config::Config) -> Self {
         let mut result = Self {
             delete_unavailable: true,
             ..Self::default()
@@ -33,11 +39,7 @@ impl Documents {
                 .timeout(crate::core::config::Config::default().document_timeout)
                 .build()
                 .expect("HTTP client");
-            let base = format!(
-                "{}/{}",
-                url.trim_end_matches('/'),
-                crate::core::config::Config::default().document_database
-            );
+            let base = format!("{}/{}", url.trim_end_matches('/'), config.document_database);
             if client
                 .get(&base)
                 .basic_auth(&user, Some(&password))
