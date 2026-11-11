@@ -1,6 +1,23 @@
 # Changelog
 
 
+## Unreleased
+
+
+### Chores
+
+- Merge v2.0.0 back to release/v2.0.0
+
+- Merge v2.0.0 back to development
+
+- Merge v2.0.0 back to feature/main
+
+
+### Features
+
+- Include scoped chat resources (#40)
+
+
 ## v2.0.0 - 2026-11-11
 
 
@@ -80,6 +97,10 @@
 - Merge #26 v2.0.0 preparation
 
 - Prepare development for v2.0.0
+
+- Finalize v2.0.0 changelog
+
+- Release v2.0.0
 
 
 ### Features
