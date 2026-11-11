@@ -1,6 +1,104 @@
 # Changelog
 
 
+## v2.0.0 - 2026-11-11
+
+
+### Bug Fixes
+
+- Keep interactive maintenance reports visible (#16)
+
+- Cli-readable-summary (#30)
+
+- Scoped-graph-depth (#32)
+
+- Memory-json-columns (#34)
+
+- Scoped-names-sql (#33)
+
+
+### Chores
+
+- Merge v1.0.0 back to release
+
+- Merge v1.0.0 back to development
+
+- Merge v1.0.0 back to feature/main
+
+- Add Rust project skeleton (#13)
+
+- Merge #13 add Rust project skeleton
+
+- Map the complete v1 behavior (#14)
+
+- Merge #14 map the complete v1 behavior
+
+- Add forced memory scope columns (#18)
+
+- Merge #18 add forced memory scope columns
+
+- Port the unchanged memory API to Rust (#15)
+
+- Merge #15 port the unchanged memory API to Rust
+
+- Preserve forgotten memory list filters (#15)
+
+- Merge #15 preserve forgotten memory list filters
+
+- Merge #16 port workers CLI consolidation and Scalar docs
+
+- Merge #19 migrate the isolated v1 memory copy
+
+- Merge #16 keep interactive maintenance reports visible
+
+- Merge #17 embed all memories through an optional provider
+
+- Merge #20 store files and their extracted text through FSM
+
+- Merge #21 unified-search
+
+- Merge #22 scoped-graph
+
+- Merge #23 bulk-delete
+
+- Merge #24 scoped-personas
+
+- Merge #25 persona-schemas
+
+- Merge #30 cli-readable-summary
+
+- Merge #32 scoped-graph-depth
+
+- Merge #34 memory-json-columns
+
+- Merge #33 scoped-names-sql
+
+- Merge #26 prepare the Rust production API and scheduler
+
+
+### Features
+
+- Port workers CLI consolidation and Scalar docs (#16)
+
+- Migrate the isolated v1 memory copy (#19)
+
+- Embed all memories through an optional provider (#17)
+
+- Store files and their extracted text through FSM (#20)
+
+- Unified-search (#21)
+
+- Scoped-graph (#22)
+
+- Bulk-delete (#23)
+
+- Scoped-personas (#24)
+
+- Persona-schemas (#25)
+
+- Prepare the Rust production API and scheduler (#26)
+
+
 ## v1.0.0 - 2026-11-09
 
 
@@ -30,6 +128,14 @@
 - Add install/uninstall scripts for the systemd deployment
 
 - Move install/uninstall into scripts/, matching monorepo convention
+
+- Prepare v1.0.0 (#12)
+
+- Consolidate v1.0.0
+
+- Prepare development for v1.0.0
+
+- Release v1.0.0
 
 
 ### Documentation
@@ -83,5 +189,10 @@
 ### Tests
 
 - Domain and API coverage for lifecycle, tagging, relationships, and recall ranking
+
+
+### merge
+
+- Promote feature/main to development
 
 
