@@ -30,3 +30,5 @@ var/
 /target
 /docs/
 .env
+
+/var/systemd/

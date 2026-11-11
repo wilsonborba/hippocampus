@@ -12,8 +12,21 @@ use std::{collections::BTreeMap, sync::Arc};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
     hippocampus::core::logs::init(false, false)?;
-    let config = Config::default();
-    let pool = test_database::connect().await?;
+    let production = match std::env::args().skip(1).collect::<Vec<_>>().as_slice() {
+        [] => false,
+        [mode] if mode == "--production" => true,
+        _ => return Err("Use hippocampus-api [--production]".into()),
+    };
+    let config = if production {
+        Config::production()
+    } else {
+        Config::default()
+    };
+    let pool = test_database::connect_target(production).await?;
+    let documents = Documents::from_config(&config).await;
+    if production && !documents.persistent() {
+        return Err("The production document database is unavailable".into());
+    }
     let keys = std::env::var("HIPPOCAMPUS_API_KEYS")
         .ok()
         .map(|v| serde_json::from_str::<BTreeMap<String, String>>(&v))
@@ -27,11 +40,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         service: MemoryService {
             store: Store { pool },
         },
-        documents: Documents::from_environment().await,
+        documents,
         api_keys: Arc::new(keys),
     };
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
-    tracing::info!(address=%config.listen,"Development server started");
+    tracing::info!(address=%config.listen,"Server started");
     axum::serve(listener, router(state)).await?;
     Ok(())
 }

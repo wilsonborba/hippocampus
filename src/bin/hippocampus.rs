@@ -19,9 +19,18 @@ async fn main() {
         std::process::exit(1);
     }
     let result = async {
-        let pool = test_database::connect()
+        let config = if cli.production() {
+            hippocampus::core::config::Config::production()
+        } else {
+            Default::default()
+        };
+        let pool = test_database::connect_target(cli.production())
             .await
-            .map_err(|_| "The test database connection failed".to_owned())?;
+            .map_err(|_| "The database connection failed".to_owned())?;
+        let documents = Documents::from_config(&config).await;
+        if cli.production() && !documents.persistent() {
+            return Err("The production document database is unavailable".to_owned());
+        }
         let state = AppState {
             embedding: hippocampus::dal::remote::embeddings::configured(&Default::default()),
             filestore: std::sync::Arc::new(
@@ -30,7 +39,7 @@ async fn main() {
             service: MemoryService {
                 store: Store { pool },
             },
-            documents: Documents::from_environment().await,
+            documents,
             api_keys: Default::default(),
         };
         execute(cli, state).await.map_err(|e| e.message)

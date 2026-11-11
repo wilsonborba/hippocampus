@@ -71,6 +71,8 @@
 
 - Merge #34 memory-json-columns
 
+- Merge #33 scoped-names-sql
+
 
 ### Features
 
@@ -91,6 +93,8 @@
 - Scoped-personas (#24)
 
 - Persona-schemas (#25)
+
+- Prepare the Rust production API and scheduler (#26)
 
 
 ## v1.0.0 - 2026-11-09
