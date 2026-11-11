@@ -1,12 +1,14 @@
 # Changelog
 
 
-## Unreleased
+## v2.1.0 - 2026-11-11
 
 
 ### Bug Fixes
 
 - Clean unused chat resources (#41)
+
+- Merge chat resource cleanup (#41)
 
 
 ### Chores
