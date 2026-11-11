@@ -1,7 +1,7 @@
 # Changelog
 
 
-## Unreleased
+## v2.0.0 - 2026-11-11
 
 
 ### Bug Fixes
@@ -72,6 +72,8 @@
 - Merge #34 memory-json-columns
 
 - Merge #33 scoped-names-sql
+
+- Merge #26 prepare the Rust production API and scheduler
 
 
 ### Features
