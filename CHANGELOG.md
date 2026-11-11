@@ -75,6 +75,12 @@
 
 - Merge #26 prepare the Rust production API and scheduler
 
+- Prepare v2.0.0 (#26)
+
+- Merge #26 v2.0.0 preparation
+
+- Prepare development for v2.0.0
+
 
 ### Features
 
