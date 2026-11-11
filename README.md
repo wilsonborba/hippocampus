@@ -1,96 +1,34 @@
-# hippocampus
+# Hippocampus
 
-Dedicated memory service for the Cortex/Plane ecosystem.
+Rust memory service and CLI. PostgreSQL holds memory relations and scope.
+CouchDB holds schema-checked persona attributes and linked documents. File bytes
+are stored through FSM. Embeddings stay disabled until separately configured.
 
-```text
-Cortex      → Think
-Hippocampus → Remember
-Plane       → Track Work
-File Store  → Preserve large/raw artifacts
-```
+Private credentials belong in `.env`. Non-secret settings are in
+`src/core/config.rs`. No credentials belong in arguments, logs or Git.
 
-Hippocampus is not a vector database wrapper. It encodes, classifies, associates, and
-recalls memory: it owns memory identity, lifecycle, tags, entities, relationships, and
-provenance, and exposes them through an HTTP API and a CLI backed by the same use cases.
+## Run and release
 
-## Persistence
+- `cargo run --bin hippocampus-api`: test database and development port 18001.
+- `cargo run --bin hippocampus-api -- --production`: production database,
+  CouchDB `hippocampus_v2`, and port 8001.
+- `cargo run --bin hippocampus -- --production health`: production CLI.
+- `cargo run --bin hippocampus -- --production db upgrade`: explicit migration.
+- `cargo run --bin hippocampus -- --production scheduler run`: background tasks.
+- `./scripts/install-service.sh --prepare`: release build and system unit files.
+- `./scripts/install-service.sh --activate`: administrator step to install the
+  prepared units and restart the existing API and scheduler.
 
-```text
-PostgreSQL → authoritative structured memory (identity, lifecycle, tags, entities,
-             relationships, provenance, embeddings via pgvector)
-Redis      → transient working memory / cache (disposable, not required for durability)
-CouchDB    → durable flexible MemoryDocument content
-File Store → raw/large artifact bytes (referenced, never duplicated)
-```
+Installation does not migrate a database. Before a production migration, stop
+both legacy APIs and the legacy scheduler, take and verify fresh PostgreSQL and
+CouchDB backups, and preserve project-memory content and metadata. The migration
+removes the aligned Cortex v1 user workspaces. Coordinate the API switch with
+Cortex. Rollback requires the pre-migration database backup and `v1.0.0` sources.
 
-Redis and CouchDB are optional at runtime: durable memory operations keep working when
-either is unavailable, degrading only the features that depend on them.
+## Checks
 
-## Setup
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env
-hippocampus db upgrade
-```
-
-## Usage & HTTP API Reference
-
-### Running the API Server
-
-```bash
-hippocampus-api  # Serves the HTTP API on port 8001 (see /health, /ready, /docs)
-```
-
-Interactive OpenAPI documentation is available at `http://localhost:8001/docs`.
-
-### Multitenant Isolation Tag Convention
-
-Hippocampus uses tag-based multitenancy:
-- Add `tenant:<tenant_id>` in the `tags` array to isolate memories per tenant/app.
-- When recalling memories, pass `tags: ["tenant:<tenant_id>"]` to query within that tenant's namespace.
-
-### REST API Endpoints & `curl` Examples
-
-#### 1. Store Memory (`POST /api/v1/memories`)
-```bash
-curl -X POST http://localhost:8001/api/v1/memories \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "cortex_db_choice",
-    "content": "Cortex uses SQLite local for logs and PostgreSQL for multi-tenant production.",
-    "tags": ["architecture", "tenant:cortex-app-1"],
-    "metadata": {"key": "cortex_db_choice", "tenant_id": "cortex-app-1"}
-  }'
-```
-
-#### 2. Recall / Vector Search Memories (`POST /api/v1/recall`)
-```bash
-curl -X POST http://localhost:8001/api/v1/recall \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "Qual banco de dados o Cortex utiliza?",
-    "tags": ["tenant:cortex-app-1"],
-    "limit": 5
-  }'
-```
-
-#### 3. Delete Memory Node (`DELETE /api/v1/memories/{id}`)
-```bash
-curl -X DELETE http://localhost:8001/api/v1/memories/<memory-id>
-```
-
-### CLI Usage
-
-```bash
-hippocampus memory remember --type decision --content "CouchDB is the selected document store." --tag project:hippocampus
-hippocampus memory get <memory-id>
-hippocampus search "mapper"
-hippocampus recall "What did we decide about the mapper?"
-```
-
-## Status
-
-MVP scope tracked in issue #1. Full architecture/domain specification lives locally in `docs/` (untracked, per working rules).
+Run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`.
+Ignored integration tests use only the isolated test database. Reports, backups
+and benchmark data stay under ignored `docs/`. Never run the test migration
+checker against production. Local and production launches select their stores
+explicitly. No migration runs implicitly at API startup.
