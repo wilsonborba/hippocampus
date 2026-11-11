@@ -35,7 +35,7 @@ struct Scoped {
     memories: BTreeMap<String, Value>,
     tags: Vec<Value>,
     entities: Vec<Value>,
-    files: Vec<Value>,
+    resources: Vec<Value>,
     relationships: Vec<Value>,
 }
 impl Scoped {
@@ -52,11 +52,11 @@ impl Scoped {
             memories,
             tags: store.graph_links(&ids, Table::Tag).await?,
             entities: store.graph_links(&ids, Table::Entity).await?,
-            files: store
+            resources: store
                 .graph_links(&ids, Table::Resource)
                 .await?
                 .into_iter()
-                .filter(|r| r["resource_type"] == "file")
+                .filter(|r| r["resource_type"] == "file" || r["resource_type"] == "chat")
                 .collect(),
             relationships: store.graph_links(&ids, Table::Relationship).await?,
         })
@@ -73,7 +73,7 @@ impl Scoped {
         let links = match kind {
             "tag" => &self.tags,
             "entity" => &self.entities,
-            "resource" => &self.files,
+            "resource" => &self.resources,
             _ => return BTreeSet::new(),
         };
         links
@@ -147,7 +147,7 @@ pub async fn graph(store: &Store, filters: &Filters, root: Option<&str>) -> Resu
     for (kind, table, links) in [
         ("tag", Table::Tag, &scoped.tags),
         ("entity", Table::Entity, &scoped.entities),
-        ("resource", Table::Resource, &scoped.files),
+        ("resource", Table::Resource, &scoped.resources),
     ] {
         for link in links {
             if !selected.contains(link["memory_id"].as_str().unwrap()) {
@@ -155,13 +155,23 @@ pub async fn graph(store: &Store, filters: &Filters, root: Option<&str>) -> Resu
             }
             let id = format!("{kind}:{}", link["id"].as_str().unwrap());
             let label = if kind == "resource" {
-                link["title"]
-                    .as_str()
-                    .unwrap_or(link["id"].as_str().unwrap())
+                let id = link["id"].as_str().unwrap();
+                let title = link["title"].as_str().unwrap_or(id);
+                if link["resource_type"] == "chat" && title.is_empty() {
+                    id
+                } else {
+                    title
+                }
             } else {
                 link["canonical_name"].as_str().unwrap()
             };
-            let node_kind = if kind == "resource" { "file" } else { kind };
+            let node_kind = if kind == "resource" {
+                link["resource_type"]
+                    .as_str()
+                    .expect("filtered resource kind")
+            } else {
+                kind
+            };
             nodes.insert(
                 id.clone(),
                 node(&id, node_kind, json!(label), projection(link, table)),
