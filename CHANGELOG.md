@@ -4,6 +4,11 @@
 ## Unreleased
 
 
+### Bug Fixes
+
+- Clean unused chat resources (#41)
+
+
 ### Chores
 
 - Merge v2.0.0 back to release/v2.0.0
@@ -16,6 +21,8 @@
 ### Features
 
 - Include scoped chat resources (#40)
+
+- Merge scoped chat resources (#40)
 
 
 ## v2.0.0 - 2026-11-11
