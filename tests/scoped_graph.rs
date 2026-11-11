@@ -339,3 +339,181 @@ async fn scoped_depth_three_preserves_legacy_limit_and_user_boundary() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+#[ignore = "requires hippocampus_v2_test"]
+async fn chat_resources_keep_scope_and_node_context() {
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
+    };
+    use hippocampus::{
+        dal::remote::{documents::Documents, embeddings::DisabledEmbedding, files::FsmClient},
+        presentation::api::{AppState, router},
+    };
+    use std::sync::Arc;
+    use tower::ServiceExt;
+    dotenvy::dotenv().ok();
+    let pool = test_database::connect().await.unwrap();
+    let store = Store { pool: pool.clone() };
+    let service = MemoryService {
+        store: store.clone(),
+    };
+    let workspace = format!("chatgraph-{}", uuid::Uuid::new_v4().simple());
+    let mut memories = vec![];
+    for (user, app, scope, title) in [
+        ("alice", "fixture", workspace.clone(), "First example"),
+        ("alice", "fixture", workspace.clone(), "Second example"),
+        ("alice", "fixture", workspace.clone(), "Third example"),
+        ("bob", "fixture", workspace.clone(), "Other user example"),
+        ("alice", "other", workspace.clone(), "Other app example"),
+        (
+            "alice",
+            "fixture",
+            format!("{workspace}-other"),
+            "Other workspace example",
+        ),
+    ] {
+        let memory = service
+            .create(
+                serde_json::from_value(
+                    json!({"workspace_id":scope,"app_id":app,"user_id":user,"title":title}),
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        memories.push(memory["id"].as_str().unwrap().to_owned());
+    }
+    let chat = service.register_resource(serde_json::from_value(json!({"resource_type":"chat","source_system":"fixture","external_id":format!("chat-{workspace}"),"uri":"fixture://chat","title":"Synthetic conversation"})).unwrap()).await.unwrap();
+    let other = service.register_resource(serde_json::from_value(json!({"resource_type":"chat","source_system":"fixture","external_id":format!("other-{workspace}"),"title":"Other synthetic conversation"})).unwrap()).await.unwrap();
+    for memory in &memories[..3] {
+        service
+            .link_resource(memory, &chat, "created_in", Some("fixture"))
+            .await
+            .unwrap();
+    }
+    for memory in &memories[3..] {
+        service
+            .link_resource(memory, &other, "created_in", Some("fixture"))
+            .await
+            .unwrap();
+    }
+    let chat_node = format!("resource:{}", chat["id"].as_str().unwrap());
+    let other_node = format!("resource:{}", other["id"].as_str().unwrap());
+    let scope = filters(&workspace, Some("alice"));
+    let result = graph(&store, &scope, None).await.unwrap();
+    assert_eq!(result["nodes"].as_array().unwrap().len(), 4);
+    assert_eq!(result["edges"].as_array().unwrap().len(), 3);
+    assert!(
+        result["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|edge| edge["edge_type"] == "created_in")
+    );
+    let node = result["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|node| node["id"] == chat_node)
+        .unwrap();
+    assert_eq!(node["node_type"], "chat");
+    assert_eq!(node["label"], "Synthetic conversation");
+    assert_eq!(node["metadata"]["resource_type"], "chat");
+    assert!(!ids(&result).contains(&other_node.as_str()));
+    assert!(
+        graph(&store, &filters(&workspace, Some("bob")), Some(&chat_node))
+            .await
+            .is_err()
+    );
+    let mut limit = scope.clone();
+    limit.insert("limit".into(), "1".into());
+    let limited = graph(&store, &limit, None).await.unwrap();
+    assert_eq!(
+        limited["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|n| n["node_type"] == "memory")
+            .count(),
+        1
+    );
+    assert!(ids(&limited).contains(&chat_node.as_str()));
+    assert_eq!(limited["truncated"], true);
+    let file = service.register_resource(serde_json::from_value(json!({"resource_type":"file","source_system":"fixture","external_id":format!("file-{workspace}"),"uri":"fixture://file","title":"example.pdf"})).unwrap()).await.unwrap();
+    service
+        .link_resource(&memories[0], &file, "references", Some("fixture"))
+        .await
+        .unwrap();
+    let file_node = format!("resource:{}", file["id"].as_str().unwrap());
+    assert_eq!(
+        graph(&store, &scope, Some(&file_node)).await.unwrap()["node"]["node_type"],
+        "file"
+    );
+    let app = router(AppState {
+        embedding: Arc::new(DisabledEmbedding),
+        filestore: Arc::new(FsmClient::default()),
+        service: service.clone(),
+        documents: Documents::default(),
+        api_keys: Default::default(),
+    });
+    for (user, status) in [("alice", StatusCode::OK), ("bob", StatusCode::NOT_FOUND)] {
+        let uri = format!(
+            "/api/v1/graph/nodes/{chat_node}?workspace_id={workspace}&app_id=fixture&user_id={user}"
+        );
+        let response = app
+            .clone()
+            .oneshot(Request::get(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), status);
+        if status == StatusCode::OK {
+            let body: Value =
+                serde_json::from_slice(&to_bytes(response.into_body(), 65536).await.unwrap())
+                    .unwrap();
+            assert_eq!(body["data"]["node"]["node_type"], "chat");
+            assert_eq!(
+                body["data"]["nodes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|n| n["node_type"] == "memory")
+                    .count(),
+                3
+            );
+            assert!(!body.to_string().contains(&other_node));
+        }
+    }
+    sqlx::query("UPDATE resource SET title='' WHERE id=$1")
+        .bind(chat["id"].as_str().unwrap())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        graph(&store, &scope, Some(&chat_node)).await.unwrap()["node"]["label"],
+        chat["id"]
+    );
+    for table in ["memory_resource", "memory_event"] {
+        sqlx::query(&format!("DELETE FROM {table} WHERE memory_id=ANY($1)"))
+            .bind(&memories)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    sqlx::query("DELETE FROM memory WHERE id=ANY($1)")
+        .bind(&memories)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let resources = [
+        chat["id"].as_str().unwrap(),
+        other["id"].as_str().unwrap(),
+        file["id"].as_str().unwrap(),
+    ];
+    sqlx::query("DELETE FROM resource WHERE id=ANY($1)")
+        .bind(resources.as_slice())
+        .execute(&pool)
+        .await
+        .unwrap();
+}

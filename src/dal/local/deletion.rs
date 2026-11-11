@@ -39,7 +39,7 @@ impl Store {
             .filter(|m| m["document_store"] == "couchdb")
             .map(|m| m["id"].as_str().unwrap().to_owned())
             .collect();
-        let files:Vec<Value>=sqlx::query_scalar("SELECT row_to_json(r) FROM resource r WHERE resource_type='file' AND id IN (SELECT resource_id FROM memory_resource WHERE memory_id=ANY($1)) ORDER BY id FOR UPDATE").bind(&ids).fetch_all(&mut *tx).await?;
+        let files:Vec<Value>=sqlx::query_scalar("SELECT row_to_json(r) FROM resource r WHERE resource_type IN ('file','chat') AND id IN (SELECT resource_id FROM memory_resource WHERE memory_id=ANY($1)) ORDER BY id FOR UPDATE").bind(&ids).fetch_all(&mut *tx).await?;
         let tags: Vec<String> =
             sqlx::query_scalar("SELECT tag_id FROM memory_tag WHERE memory_id=ANY($1)")
                 .bind(&ids)
@@ -67,7 +67,7 @@ impl Store {
         for file in files {
             let id = file["id"].as_str().unwrap();
             let affected=sqlx::query("DELETE FROM resource WHERE id=$1 AND NOT EXISTS(SELECT 1 FROM memory_resource WHERE resource_id=$1)").bind(id).execute(&mut *tx).await?.rows_affected();
-            if affected > 0 {
+            if affected > 0 && file["resource_type"] == "file" {
                 unused.push(file);
             }
         }

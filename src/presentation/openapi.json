@@ -2056,7 +2056,7 @@
     "/api/v1/graph": {
       "get": {
         "summary": "Whole scope graph",
-        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth. Node types are memory, tag, entity, file and chat. Chat resources use resource:<id> node ids and their stored memory relationship, such as created_in.",
         "parameters": [
           {
             "name": "workspace_id",
@@ -2117,7 +2117,7 @@
     "/api/v1/graph/nodes/{node_id}": {
       "get": {
         "summary": "Scoped node context",
-        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth.",
+        "description": "Active memories only. Scope is required. Omit user_id for all users; empty user_id selects A2A. Auxiliary names must link to a scoped memory. Node ids use memory id, tag:id, entity:id, resource:id. Limit bounds memories; node context expands relationships up to depth. Node types are memory, tag, entity, file and chat. Chat resources use resource:<id> node ids and their stored memory relationship, such as created_in.",
         "parameters": [
           {
             "name": "workspace_id",

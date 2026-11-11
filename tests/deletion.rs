@@ -273,3 +273,85 @@ async fn shared_file_last_link_failure_retry_and_scope() {
     );
     task.abort();
 }
+
+#[tokio::test]
+#[ignore = "requires hippocampus_v2_test"]
+async fn chat_resource_cleanup_keeps_shared_links_and_checks_scope() {
+    dotenvy::dotenv().ok();
+    let pool = test_database::connect().await.unwrap();
+    let store = Store { pool: pool.clone() };
+    let service = MemoryService {
+        store: store.clone(),
+    };
+    let workspace = format!("chat-delete-{}", uuid::Uuid::new_v4().simple());
+    let mut ids = vec![];
+    for user in ["alice", "bob"] {
+        let request = serde_json::from_value(json!({
+            "workspace_id":workspace,"app_id":"fixture","user_id":user,"title":"Synthetic exchange",
+            "resources":[{"resource_type":"chat","source_system":"cortex","external_id":workspace,
+                "title":"Synthetic chat","relationship":"created_in"}]
+        }))
+        .unwrap();
+        ids.push(
+            service.create(request).await.unwrap()["id"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        );
+    }
+    let resource: String =
+        sqlx::query_scalar("SELECT resource_id FROM memory_resource WHERE memory_id=$1")
+            .bind(&ids[0])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let request = |user: &str, memory_ids: Vec<String>| {
+        serde_json::from_value(json!({
+            "workspace_id":workspace,"app_id":"fixture","user_id":user,"memory_ids":memory_ids
+        }))
+        .unwrap()
+    };
+    assert!(
+        store
+            .begin_memory_delete(&request("alice", ids.clone()))
+            .await
+            .is_err()
+    );
+    assert!(store.get(Table::Memory, &ids[0]).await.unwrap().is_some());
+    assert!(
+        store
+            .get(Table::Resource, &resource)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let deletion = store
+        .begin_memory_delete(&request("alice", vec![ids[0].clone()]))
+        .await
+        .unwrap();
+    assert!(
+        deletion.files.is_empty(),
+        "chat cleanup must not call file storage"
+    );
+    deletion.commit().await.unwrap();
+    assert!(
+        store
+            .get(Table::Resource, &resource)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let deletion = store
+        .begin_memory_delete(&request("bob", vec![ids[1].clone()]))
+        .await
+        .unwrap();
+    assert!(deletion.files.is_empty());
+    deletion.commit().await.unwrap();
+    assert!(
+        store
+            .get(Table::Resource, &resource)
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
