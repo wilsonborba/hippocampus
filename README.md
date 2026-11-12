@@ -15,9 +15,13 @@ Private credentials belong in `.env`. Non-secret settings are in
 - `cargo run --bin hippocampus -- --production health`: production CLI.
 - `cargo run --bin hippocampus -- --production db upgrade`: explicit migration.
 - `cargo run --bin hippocampus -- --production scheduler run`: background tasks.
-- `./scripts/install-service.sh --prepare`: release build and system unit files.
-- `./scripts/install-service.sh --activate`: administrator step to install the
-  prepared units and restart the existing API and scheduler.
+- `./scripts/install-service.sh --prepare`: locked release build, staged binaries and units.
+  `CARGO_TARGET_DIR` is supported. Run this step in the production checkout.
+- `./scripts/install-service.sh --check`: verify staged artifact hashes and source files.
+- `./scripts/install-service.sh --activate`: administrator step. Installs the staged
+  binaries before restart, then verifies each running executable hash.
+  Missing, changed or stale prepared artifacts are rejected before service changes.
+  Run only in the coordinated deployment window.
 
 Installation does not migrate a database. Before a production migration, stop
 both legacy APIs and the legacy scheduler, take and verify fresh PostgreSQL and
