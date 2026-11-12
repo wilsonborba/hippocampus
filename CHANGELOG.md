@@ -1,17 +1,23 @@
 # Changelog
 
 
-## Unreleased
+## v2.1.2 - 2026-11-12
 
 
 ### Bug Fixes
 
 - Use stable source checks across locales (#42)
 
+- Merge stable source checks (#42)
+
 
 ### Chores
 
+- Merge v2.1.1 back to development
+
 - Merge v2.1.1 back to feature/main
+
+- Prepare v2.1.2
 
 
 ## v2.1.1 - 2026-11-12
