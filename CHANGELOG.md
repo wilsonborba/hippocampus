@@ -1,6 +1,19 @@
 # Changelog
 
 
+## Unreleased
+
+
+### Bug Fixes
+
+- Use stable source checks across locales (#42)
+
+
+### Chores
+
+- Merge v2.1.1 back to feature/main
+
+
 ## v2.1.1 - 2026-11-12
 
 
@@ -20,6 +33,10 @@
 - Merge v2.1.0 back to feature/main
 
 - Prepare v2.1.1
+
+- Release v2.1.1
+
+- Promote v2.1.1
 
 
 ## v2.1.0 - 2026-11-11
