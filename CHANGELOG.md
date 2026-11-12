@@ -1,12 +1,14 @@
 # Changelog
 
 
-## Unreleased
+## v2.1.1 - 2026-11-12
 
 
 ### Bug Fixes
 
 - Install verified prepared binaries before restart (#42)
+
+- Merge prepared artifact installation (#42)
 
 
 ### Chores
@@ -16,6 +18,8 @@
 - Merge v2.1.0 back to development
 
 - Merge v2.1.0 back to feature/main
+
+- Prepare v2.1.1
 
 
 ## v2.1.0 - 2026-11-11
